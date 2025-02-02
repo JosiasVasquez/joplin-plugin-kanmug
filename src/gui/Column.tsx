@@ -28,7 +28,9 @@ export default function ({ name, notes }: { name: string; notes: NoteData[] }) {
   }, [_setIsNoteOverDebounced]);
 
   const handleDragOver = (e: React.DragEvent) => {
-    if (e.dataTransfer.types.includes('text/x-jop-note-ids')) {
+    if (e.dataTransfer.types.includes('text/x-jop-note-ids') 
+      && !e.dataTransfer.types.includes('text/x-kanmug-note-ids')
+    ) {
       e.dataTransfer.dropEffect = 'link';
       e.preventDefault();
       e.stopPropagation();
