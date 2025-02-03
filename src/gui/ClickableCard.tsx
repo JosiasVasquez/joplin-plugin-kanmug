@@ -5,6 +5,11 @@ import type { NoteData } from "../types";
 import { useMainContext } from "./MainContext";
 import ContextMenu from "./ContextMenu";
 
+const MenuItem = {
+  RemoveFromKanban: "Remove from Kanban",
+  OpenNoteInNewWindow: "Open in New Window",
+}
+
 export default React.forwardRef<HTMLDivElement, { note: NoteData }>(
   ({ note }, ref) => {
     const {send, dispatch} = useMainContext();
@@ -16,9 +21,14 @@ export default React.forwardRef<HTMLDivElement, { note: NoteData }>(
     };
 
     const handleMenu = React.useCallback((option: string) => {
-      if (option === "Remove from Kanban") {
+      if (option === MenuItem.RemoveFromKanban) {
         dispatch({
           type: "removeNoteFromKanban",
+          payload: { noteId: note.id },
+        });
+      } else if (option === MenuItem.OpenNoteInNewWindow) {
+        send({
+          type: "openNoteInNewWindow",
           payload: { noteId: note.id },
         });
       }
@@ -26,7 +36,7 @@ export default React.forwardRef<HTMLDivElement, { note: NoteData }>(
 
     return (
       <div ref={ref} onClick={handleClick}>
-        <ContextMenu options={["Remove from Kanban"]} onSelect={handleMenu}>
+        <ContextMenu options={[MenuItem.OpenNoteInNewWindow, MenuItem.RemoveFromKanban]} onSelect={handleMenu}>
             <Card note={note}/>
         </ContextMenu>
       </div>

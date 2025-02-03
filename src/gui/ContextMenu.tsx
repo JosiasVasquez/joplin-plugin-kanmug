@@ -55,6 +55,7 @@ const FloatingMenu = styled.div<{ posX: number | null; posY: number | null }>(
     backgroundColor: "var(--joplin-background-color)",
     border: "1px solid var(--joplin-divider-color)",
     padding: "2px 0",
+    zIndex: 10000,
   })
 );
 

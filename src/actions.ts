@@ -64,6 +64,13 @@ export interface NewNoteAction {
   };
 }
 
+export interface OpenNoteInNewWindowAction {
+  type: "openNoteInNewWindow";
+  payload: {
+    noteId: string;
+  };
+}
+
 export interface CloseAction {
   type: "close";
 }
@@ -94,4 +101,5 @@ export type Action =
   | NewNoteAction
   | CloseAction
   | OpenKanbanConfigNoteAction
+  | OpenNoteInNewWindowAction
   | InsertNoteToColumnAction;

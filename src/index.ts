@@ -187,6 +187,11 @@ async function handleKanbanMessage(msg: Action) {
   if (!openBoard) return;
 
   switch (msg.type) {
+
+    case "openNoteInNewWindow": {
+      await joplin.commands.execute("openNoteInNewWindow", msg.payload.noteId);
+      return;
+    }
     // Those actions do not update state, so it can return immediately
     case "openNote": {
       await joplin.commands.execute("openNote", msg.payload.noteId);

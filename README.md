@@ -113,7 +113,7 @@ columns:
     newNoteTitle: "New Task <%= today().add('1d').add('-7h').format('MM/dd') %>"
 ```
 
-The title will be rendered as "New Task 01/31" if the current date is January 31, 2025.
+The title will be rendered as "New Task 01/31" if the current date is January 30, 2025 or January 31, 2025 before 07:00.
 
 The `today()` returns the current date in the format `yyyy-MM-dd`.
 
