@@ -88,6 +88,16 @@ export interface InsertNoteToColumnAction {
   };
 }
 
+export interface RequestToShowRecentKanbanAction {
+  type: "requestToShowRecentKanban";
+}
+
+export interface OpenKanbanAction {
+  type: "openKanban";
+  payload: {
+    noteId: string;
+  };
+}
 export type Action =
   | MoveNoteAction
   | LoadAction
@@ -102,4 +112,6 @@ export type Action =
   | CloseAction
   | OpenKanbanConfigNoteAction
   | OpenNoteInNewWindowAction
-  | InsertNoteToColumnAction;
+  | InsertNoteToColumnAction
+  | RequestToShowRecentKanbanAction
+  | OpenKanbanAction;

@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { render } from "react-dom";
 import styled from "styled-components";
-import { IoMdSettings, IoMdAdd, IoMdClose, IoMdRefresh } from "react-icons/io";
+import { IoMdSettings, IoMdAdd, IoMdClose, IoMdRefresh, IoMdTime } from "react-icons/io";
 
 import { capitalize } from "../utils";
 import { DispatchFn, useRemoteBoard } from "./hooks";
@@ -9,6 +9,7 @@ import { DragDropContext } from "./DragDrop";
 import Column from "./Column";
 import type { Message } from "../types";
 import { MainContext } from "./MainContext";
+import { RecentKanbansPanel } from "./RecentKanbansPanel";
 
 export const DispatchContext = React.createContext<DispatchFn>(async () => {});
 export const IsWaitingContext = React.createContext<boolean>(false);
@@ -52,12 +53,17 @@ function MessageBox({
 function App() {
   const [board, dispatch, send] = useRemoteBoard();
   const [isRefreshDisabled, setIsRefreshDisabled] = useState(false);
-
+  const [isRecentKanbanVisible, setIsRecentKanbanVisible] = useState(false);
+  const [kanbans, setKanbans] = useState<{noteId: string, title: string}[]>([]);
+  
   React.useEffect(() => {
     webviewApi.onMessage((payload) => {
       const { message } = payload;
       if (message.type === "refresh") {
         dispatch({ type: "poll" });
+      } else if (message.type === "showRecentKanban") {
+        setKanbans(message.payload.recentKanbans);
+        setIsRecentKanbanVisible(true);
       }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -79,6 +85,10 @@ function App() {
     }
   }, [dispatch, isRefreshDisabled]);
 
+  const handleShowRecentKanban = React.useCallback(() => {
+    send({ type: "requestToShowRecentKanban" });
+  }, [dispatch]);
+
   const cont = board ? (
     <Container>
       <Header>
@@ -95,6 +105,9 @@ function App() {
           {board.name}
         </BoardTitle>
 
+        <IconCont onClick={handleShowRecentKanban}>
+          <IoMdTime size="25px" />
+        </IconCont>
         <IconCont
           onClick={handleRefresh}
         >
@@ -139,6 +152,7 @@ function App() {
           ))}
         </ColumnsCont>
       )}
+      {isRecentKanbanVisible && <RecentKanbansPanel kanbans={kanbans} onClose={() => setIsRecentKanbanVisible(false)}/>}
     </Container>
   ) : (
     <h1>Loading...</h1>
@@ -194,6 +208,7 @@ const IconCont = styled("div")({
   justifyContent: "center",
   alignItems: "center",
   borderRadius: "5px",
+  cursor: "pointer",
 
   "&:nth-child(3)": {
     marginLeft: "auto",

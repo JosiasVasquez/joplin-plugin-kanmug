@@ -20,14 +20,30 @@ import { type Config, type BoardState, NoteData, NoteDataMonad } from "./types";
 import { JoplinService } from "./services/joplinService";
 import { Debouncer } from "./utils/debouncer";
 import { AsyncQueue } from "./utils/asyncQueue";
-import { tryWaitUntilTimeout } from "./utils/timer";
-
-const NEW_NOTE_WAIT_TIMEOUT = 40000;
-const NEW_NOTE_WAIT_INTERVAL = 1000;
 
 const joplinService = new JoplinService();
 joplinService.start();
 let openBoard: Board | undefined;
+
+const RECENT_KANBANS_MAX_SIZE = 100;
+
+let recentKanbans: {
+  noteId: string;
+  title: string;
+}[] = [];
+
+function appendRecentKanban(noteId: string, title: string) {
+  recentKanbans = recentKanbans.filter((kanban) => kanban.noteId !== noteId);
+
+  recentKanbans.unshift({
+    noteId,
+    title,
+  });
+
+  if (recentKanbans.length > RECENT_KANBANS_MAX_SIZE) {
+    recentKanbans.pop();
+  }
+}
 
 // UI VIEWS
 
@@ -151,6 +167,7 @@ async function reloadConfig(noteId: string) {
   const valid = ymlConfig !== null && (await board.loadConfig(ymlConfig));
   if (valid) {
     openBoard = board;
+    appendRecentKanban(noteId, note.title);
   }
   // Do nothing if it is not valid. 
   // User could close the kanban by using the "x" button
@@ -187,18 +204,33 @@ async function handleKanbanMessage(msg: Action) {
   if (!openBoard) return;
 
   switch (msg.type) {
-
+    // Those actions do not update state, so it can return immediately
+    case "requestToShowRecentKanban": {
+      if (boardView) {
+        joplin.views.panels.postMessage(boardView, {
+          type: "showRecentKanban",
+          payload: {
+            recentKanbans,
+          },
+        });     
+      }
+      return;
+    }
     case "openNoteInNewWindow": {
       await joplin.commands.execute("openNoteInNewWindow", msg.payload.noteId);
       return;
     }
-    // Those actions do not update state, so it can return immediately
     case "openNote": {
       await joplin.commands.execute("openNote", msg.payload.noteId);
       return;
     }
     case "openKanbanConfigNote": {
       await joplin.commands.execute("openNote", openBoard.configNoteId);
+      return;
+    }
+    case "openKanban": {
+      await reloadConfig(msg.payload.noteId);
+      refreshUI();
       return;
     }
   }
