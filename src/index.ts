@@ -20,30 +20,14 @@ import { type Config, type BoardState, NoteData, NoteDataMonad } from "./types";
 import { JoplinService } from "./services/joplinService";
 import { Debouncer } from "./utils/debouncer";
 import { AsyncQueue } from "./utils/asyncQueue";
+import { SettingItemType } from "api/types";
+import { RECENT_KANBANS_STORAGE_KEY, RecentKanbanStore } from "./recentKanbanStore";
 
 const joplinService = new JoplinService();
 joplinService.start();
 let openBoard: Board | undefined;
 
-const RECENT_KANBANS_MAX_SIZE = 100;
-
-let recentKanbans: {
-  noteId: string;
-  title: string;
-}[] = [];
-
-function appendRecentKanban(noteId: string, title: string) {
-  recentKanbans = recentKanbans.filter((kanban) => kanban.noteId !== noteId);
-
-  recentKanbans.unshift({
-    noteId,
-    title,
-  });
-
-  if (recentKanbans.length > RECENT_KANBANS_MAX_SIZE) {
-    recentKanbans.pop();
-  }
-}
+const recentKanbanStore = new RecentKanbanStore();
 
 // UI VIEWS
 
@@ -167,7 +151,8 @@ async function reloadConfig(noteId: string) {
   const valid = ymlConfig !== null && (await board.loadConfig(ymlConfig));
   if (valid) {
     openBoard = board;
-    appendRecentKanban(noteId, note.title);
+    recentKanbanStore.prependKanban(noteId, note.title);
+    await recentKanbanStore.save();
   }
   // Do nothing if it is not valid. 
   // User could close the kanban by using the "x" button
@@ -210,9 +195,9 @@ async function handleKanbanMessage(msg: Action) {
         joplin.views.panels.postMessage(boardView, {
           type: "showRecentKanban",
           payload: {
-            recentKanbans,
+            recentKanbans: recentKanbanStore.getKanbans(),
           },
-        });     
+        });
       }
       return;
     }
@@ -439,5 +424,18 @@ joplin.plugins.register({
         refreshUI();
       }
     });
+
+    const settings = {
+      [RECENT_KANBANS_STORAGE_KEY]: {
+        value: [],
+        type: SettingItemType.Object,
+        public: false,
+        label: "Recent Kanbans",
+        section: "kanmug",
+      },
+    };
+    
+    await joplin.settings.registerSettings(settings);
+    await recentKanbanStore.load();
   },
 });

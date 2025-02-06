@@ -4,9 +4,6 @@ import { Backdrop } from "./Backdrop";
 import { useMainContext } from "./MainContext";
 import { IoMdClose } from "react-icons/io";
 
-const PANEL_WIDTH = "180px";
-const HEADER_HEIGHT = "40px";
-
 interface RecentKanbansPanelProps {
   kanbans: Array<{ noteId: string; title: string }>;
   onClose: () => void;
@@ -17,7 +14,7 @@ const Container = styled.div({
   top: 0,
   right: 0,
   bottom: 0,
-  width: PANEL_WIDTH,
+  width: "240px",
   background: "var(--joplin-background-color)",
   boxShadow: "-2px 0 8px rgba(0, 0, 0, 0.15)",
   display: "flex",
@@ -49,7 +46,7 @@ const Container = styled.div({
 });
 
 const Header = styled.div({
-  height: HEADER_HEIGHT,
+  height: "40px",
   padding: "0 16px",
   display: "flex",
   alignItems: "center",
@@ -113,9 +110,14 @@ export function RecentKanbansPanel({ kanbans, onClose }: RecentKanbansPanelProps
     send({ type: "openKanban", payload: { noteId } });
   }, [send]);
 
+  const handleContainerClick = React.useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    e.stopPropagation();
+    e.preventDefault();
+  }, []);
+
   return (
       <Backdrop onClose={onClose} isVisible={true}>
-        <Container>
+        <Container onClick={handleContainerClick}>
             <Header>
             <Title>Recent</Title>
             <CloseButton onClick={onClose}>
