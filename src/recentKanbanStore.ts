@@ -63,6 +63,10 @@ export class RecentKanbanStore {
     }
   }
 
+  removeKanban(noteId: string) {
+    this.kanbans = this.kanbans.filter((kanban) => kanban.noteId !== noteId);
+  }
+
   async save() {
     this.saveDebouncer.debounce(async () => {
       const value = JSON.stringify(this.kanbans)

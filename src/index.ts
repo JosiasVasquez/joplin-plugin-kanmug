@@ -201,6 +201,13 @@ async function handleKanbanMessage(msg: Action) {
       }
       return;
     }
+
+    case "requestToRemoveRecentKanbanItem": {
+      recentKanbanStore.removeKanban(msg.payload.noteId);
+      recentKanbanStore.save();
+      return;
+    }
+
     case "openNoteInNewWindow": {
       await joplin.commands.execute("openNoteInNewWindow", msg.payload.noteId);
       return;

@@ -4,24 +4,36 @@ const Z_INDEX_BACKDROP = Math.floor(Number.MAX_SAFE_INTEGER / 2);
 
 interface BackdropProps {
   children?: React.ReactNode;
-  isVisible: boolean;
+  isOpened: boolean;
   onClose: () => void;
 }
 
-export function Backdrop({ children, isVisible, onClose }: BackdropProps) {
+export function Backdrop({ children, isOpened, onClose }: BackdropProps) {
   const handleKeyPress = useCallback(
     (event: KeyboardEvent) => {
-      if (event.key === "Escape" && isVisible) {
+      if (event.key === "Escape" && isOpened) {
         onClose();
       }
     },
-    [isVisible, onClose]
+    [isOpened, onClose]
   );
 
   const onClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
-      e.stopPropagation();
-      e.preventDefault();
+      onClose();
+    },
+    [onClose]
+  );
+
+  const onContextMenu = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      onClose();
+    },
+    [onClose]
+  );
+
+  const onWheel = useCallback(
+    (e: React.WheelEvent<HTMLDivElement>) => {
       onClose();
     },
     [onClose]
@@ -34,7 +46,7 @@ export function Backdrop({ children, isVisible, onClose }: BackdropProps) {
     };
   }, [handleKeyPress]);
 
-  if (!isVisible) {
+  if (!isOpened) {
     return null;
   }
 
@@ -50,6 +62,8 @@ export function Backdrop({ children, isVisible, onClose }: BackdropProps) {
         zIndex: Z_INDEX_BACKDROP,
       }}
       onClick={onClick}
+      onContextMenu={onContextMenu}
+      onWheel={onWheel}
     >
       {children}
     </div>

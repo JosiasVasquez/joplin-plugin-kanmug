@@ -1,7 +1,11 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import styled from "styled-components";
+import { createPortal } from "react-dom";
+import { Backdrop } from "./Backdrop";
 
-const CLOSE_EVENTS = ["click", "contextmenu", "wheel", "blur"];
+const CLOSE_EVENTS = ["click", "contextmenu", "wheel"];
+const MENU_WIDTH = 150;
+
 export default function ({
   options,
   onSelect,
@@ -17,15 +21,6 @@ export default function ({
   }>({ posX: null, posY: null });
   const isOpen = posX !== null && posY !== null;
 
-  useEffect(() => {
-    if (isOpen) {
-      const close = () => setPos({ posX: null, posY: null });
-      CLOSE_EVENTS.forEach((ev) => window.addEventListener(ev, close));
-      return () =>
-        CLOSE_EVENTS.forEach((ev) => window.removeEventListener(ev, close));
-    }
-  }, [isOpen]);
-
   const handleMenu = (ev: React.MouseEvent) => {
     ev.preventDefault();
     setPos({ posX: ev.clientX, posY: ev.clientY });
@@ -34,24 +29,29 @@ export default function ({
   return (
     <>
       <div onContextMenu={handleMenu}>{children}</div>
-      <FloatingMenu posX={posX} posY={posY}>
-        {options.map((opt, idx) => (
-          <MenuItem key={idx} onClick={() => onSelect(opt)}>
-            {opt}
-          </MenuItem>
-        ))}
-      </FloatingMenu>
+      {isOpen &&
+        createPortal(
+          <Backdrop isOpened={isOpen} onClose={() => setPos({ posX: null, posY: null })}>
+            <FloatingMenu posX={posX} posY={posY}>
+              {options.map((opt, idx) => (
+                <MenuItem key={idx} onClick={() => onSelect(opt)}>
+                  {opt}
+                </MenuItem>
+              ))}
+            </FloatingMenu>
+          </Backdrop>,
+          document.getElementById("joplin-plugin-content-root")!
+        )}
     </>
   );
 }
 
 const FloatingMenu = styled.div<{ posX: number | null; posY: number | null }>(
   ({ posX, posY }) => ({
-    position: "absolute",
+    position: "fixed",
     top: posY || "0",
     left: posX || "0",
-    display: posX === null ? "none" : "block",
-    width: "150px",
+    width: `${MENU_WIDTH}px`,
     backgroundColor: "var(--joplin-background-color)",
     border: "1px solid var(--joplin-divider-color)",
     padding: "2px 0",

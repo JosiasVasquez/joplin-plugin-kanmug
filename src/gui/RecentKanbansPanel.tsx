@@ -2,11 +2,12 @@ import React from "react";
 import styled from "styled-components";
 import { useMainContext } from "./MainContext";
 import { IoMdClose } from "react-icons/io";
-import { useDebouncer } from "../hooks/debouncer";
+import ContextMenu from "./ContextMenu";
 
 interface RecentKanbansPanelProps {
   kanbans: Array<{ noteId: string; title: string }>;
   onClose: () => void;
+  onRemoveKanban: (noteId: string) => void;
 }
 
 const Container = styled.div<{ isOpened: boolean }>((
@@ -20,40 +21,14 @@ const Container = styled.div<{ isOpened: boolean }>((
   top: 0,
   right: 0,
   bottom: 0,
-  width: "240px",
+  width: "200px",
   background: "var(--joplin-background-color)",
   boxShadow: "-2px 0 8px rgba(143, 90, 90, 0.15)",
   display: "flex",
   flexDirection: "column",
-  animation: "slideIn 0.3s ease-out",
   borderLeft: "1px solid var(--joplin-divider-color)",
   transform: isOpened ? "translateX(0)" : "translateX(100%)",
-
-  "&.opened": {
-    animation: "slideIn 0.3s ease-out",
-
-    "@keyframes slideIn": {
-      from: {
-        transform: "translateX(100%)"
-      },
-      to: {
-        transform: "translateX(0)"
-      }
-    }
-  },
-
-  "&.closing": {
-    animation: "slideOut 0.3s ease-out",
-    
-    "@keyframes slideOut": {
-      from: {
-        transform: "translateX(0)"
-      },
-      to: {
-        transform: "translateX(100%)"
-      }
-    }
-  }
+  transition: "transform 0.3s ease-out",
 }));
 
 const Header = styled.div({
@@ -104,6 +79,7 @@ const KanbanItem = styled.button({
   overflow: "hidden",
   textOverflow: "ellipsis",
   color: "var(--joplin-color3)",
+  userSelect: "none",
   
   "&:hover": {
     backgroundColor: "var(--joplin-background-color-hover3)",
@@ -116,10 +92,10 @@ const KanbanItem = styled.button({
 
 export function useRecentKanbansPanelHandle({
   onClose,
-  kanbans
+  kanbans,
+  onRemoveKanban,
 }: RecentKanbansPanelProps) {
   const [isOpened, setIsOpened] = React.useState(false);
-  const debouncer = useDebouncer(300);
 
   const open = React.useCallback(() => {
     setIsOpened(true);
@@ -135,7 +111,8 @@ export function useRecentKanbansPanelHandle({
     kanbans,
     open,
     close,
-  }), [isOpened, kanbans, open, close]);
+    onRemoveKanban,
+  }), [isOpened, kanbans, open, close, onRemoveKanban]);
 
   return props;
 }
@@ -145,6 +122,7 @@ export function RecentKanbansPanel(props: ReturnType<typeof useRecentKanbansPane
     kanbans,
     close,
     isOpened,
+    onRemoveKanban,
   } = props;
 
   const {send} = useMainContext();
@@ -152,6 +130,13 @@ export function RecentKanbansPanel(props: ReturnType<typeof useRecentKanbansPane
   const handleKanbanClick = React.useCallback((noteId: string) => {
     send({ type: "openKanban", payload: { noteId } });
   }, [send]);
+
+  const handleContextMenuSelect = React.useCallback((selected: string, noteId: string) => {
+    if (selected === "Remove from List") {
+      send({ type: "requestToRemoveRecentKanbanItem", payload: { noteId } });
+      onRemoveKanban(noteId);
+    }
+  }, [send, onRemoveKanban]);
 
   const handleContainerClick = React.useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     e.stopPropagation();
@@ -161,7 +146,6 @@ export function RecentKanbansPanel(props: ReturnType<typeof useRecentKanbansPane
   return (
       <Container 
         onClick={handleContainerClick} 
-        className={isOpened ? "opened" : "closing"}
         isOpened={isOpened}
       >
           <Header>
@@ -172,12 +156,17 @@ export function RecentKanbansPanel(props: ReturnType<typeof useRecentKanbansPane
           </Header>
           <KanbanList>
           {kanbans.map((kanban) => (
-              <KanbanItem
-              key={kanban.noteId}
-              onClick={() => handleKanbanClick(kanban.noteId)}
+              <ContextMenu 
+                key={kanban.noteId}
+                options={["Remove from List"]} 
+                onSelect={(selected) => handleContextMenuSelect(selected, kanban.noteId)}
               >
-              {kanban.title}
-              </KanbanItem>
+                <KanbanItem
+                  onClick={() => handleKanbanClick(kanban.noteId)}
+                >
+                  {kanban.title}
+                </KanbanItem>
+              </ContextMenu>
           ))}
           </KanbanList>
       </Container>

@@ -92,6 +92,13 @@ export interface RequestToShowRecentKanbanAction {
   type: "requestToShowRecentKanban";
 }
 
+export interface RequestToRemoveRecentKanbanItemAction {
+  type: "requestToRemoveRecentKanbanItem";
+  payload: {
+    noteId: string;
+  };
+}
+
 export interface OpenKanbanAction {
   type: "openKanban";
   payload: {
@@ -114,4 +121,5 @@ export type Action =
   | OpenNoteInNewWindowAction
   | InsertNoteToColumnAction
   | RequestToShowRecentKanbanAction
-  | OpenKanbanAction;
+  | OpenKanbanAction
+  | RequestToRemoveRecentKanbanItemAction;

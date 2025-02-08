@@ -55,10 +55,15 @@ function App() {
   const [board, dispatch, send] = useRemoteBoard();
   const [isRefreshDisabled, setIsRefreshDisabled] = useState(false);
   const [kanbans, setKanbans] = useState<{noteId: string, title: string}[]>([]);
-  
+
+  const handleRemoveKanban = React.useCallback((noteId: string) => {
+    setKanbans(kanbans.filter((kanban) => kanban.noteId !== noteId));
+  }, [kanbans]);
+
   const recentKanbanHandle = useRecentKanbansPanelHandle({
     kanbans,
-    onClose: () => {}
+    onClose: () => {},
+    onRemoveKanban: handleRemoveKanban,
   });
 
   React.useEffect(() => {
