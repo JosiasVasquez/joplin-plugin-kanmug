@@ -1,33 +1,44 @@
 import React from "react";
 import styled from "styled-components";
-import { Backdrop } from "./Backdrop";
 import { useMainContext } from "./MainContext";
 import { IoMdClose } from "react-icons/io";
+import { useDebouncer } from "../hooks/debouncer";
 
 interface RecentKanbansPanelProps {
   kanbans: Array<{ noteId: string; title: string }>;
   onClose: () => void;
 }
 
-const Container = styled.div({
+const Container = styled.div<{ isOpened: boolean }>((
+  {
+    isOpened,
+  }: {
+    isOpened: boolean;
+  }
+) => ({
   position: "fixed",
   top: 0,
   right: 0,
   bottom: 0,
   width: "240px",
   background: "var(--joplin-background-color)",
-  boxShadow: "-2px 0 8px rgba(0, 0, 0, 0.15)",
+  boxShadow: "-2px 0 8px rgba(143, 90, 90, 0.15)",
   display: "flex",
   flexDirection: "column",
   animation: "slideIn 0.3s ease-out",
   borderLeft: "1px solid var(--joplin-divider-color)",
+  transform: isOpened ? "translateX(0)" : "translateX(100%)",
 
-  "@keyframes slideIn": {
-    from: {
-      transform: "translateX(100%)"
-    },
-    to: {
-      transform: "translateX(0)"
+  "&.opened": {
+    animation: "slideIn 0.3s ease-out",
+
+    "@keyframes slideIn": {
+      from: {
+        transform: "translateX(100%)"
+      },
+      to: {
+        transform: "translateX(0)"
+      }
     }
   },
 
@@ -43,7 +54,7 @@ const Container = styled.div({
       }
     }
   }
-});
+}));
 
 const Header = styled.div({
   height: "40px",
@@ -103,7 +114,39 @@ const KanbanItem = styled.button({
   }
 });
 
-export function RecentKanbansPanel({ kanbans, onClose }: RecentKanbansPanelProps) {
+export function useRecentKanbansPanelHandle({
+  onClose,
+  kanbans
+}: RecentKanbansPanelProps) {
+  const [isOpened, setIsOpened] = React.useState(false);
+  const debouncer = useDebouncer(300);
+
+  const open = React.useCallback(() => {
+    setIsOpened(true);
+  }, []);
+
+  const close = React.useCallback(() => {
+    setIsOpened(false);
+    onClose();
+  }, [onClose]);
+
+  const props = React.useMemo(() => ({
+    isOpened,
+    kanbans,
+    open,
+    close,
+  }), [isOpened, kanbans, open, close]);
+
+  return props;
+}
+
+export function RecentKanbansPanel(props: ReturnType<typeof useRecentKanbansPanelHandle>) {
+  const {
+    kanbans,
+    close,
+    isOpened,
+  } = props;
+
   const {send} = useMainContext();
 
   const handleKanbanClick = React.useCallback((noteId: string) => {
@@ -116,25 +159,27 @@ export function RecentKanbansPanel({ kanbans, onClose }: RecentKanbansPanelProps
   }, []);
 
   return (
-      <Backdrop onClose={onClose} isVisible={true}>
-        <Container onClick={handleContainerClick}>
-            <Header>
-            <Title>Recent</Title>
-            <CloseButton onClick={onClose}>
-                <IoMdClose size="20px"/>
-            </CloseButton>
-            </Header>
-            <KanbanList>
-            {kanbans.map((kanban) => (
-                <KanbanItem
-                key={kanban.noteId}
-                onClick={() => handleKanbanClick(kanban.noteId)}
-                >
-                {kanban.title}
-                </KanbanItem>
-            ))}
-            </KanbanList>
-        </Container>
-      </Backdrop>
+      <Container 
+        onClick={handleContainerClick} 
+        className={isOpened ? "opened" : "closing"}
+        isOpened={isOpened}
+      >
+          <Header>
+          <Title>Recent</Title>
+          <CloseButton onClick={close}>
+              <IoMdClose size="20px"/>
+          </CloseButton>
+          </Header>
+          <KanbanList>
+          {kanbans.map((kanban) => (
+              <KanbanItem
+              key={kanban.noteId}
+              onClick={() => handleKanbanClick(kanban.noteId)}
+              >
+              {kanban.title}
+              </KanbanItem>
+          ))}
+          </KanbanList>
+      </Container>
   );
 };
