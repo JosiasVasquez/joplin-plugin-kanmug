@@ -213,11 +213,11 @@ async function handleKanbanMessage(msg: Action) {
       return;
     }
     case "openNote": {
-      await joplin.commands.execute("openNote", msg.payload.noteId);
+      await joplinService.openNote(msg.payload.noteId);
       return;
     }
     case "openKanbanConfigNote": {
-      await joplin.commands.execute("openNote", openBoard.configNoteId);
+      await joplinService.openNote(openBoard.configNoteId);
       return;
     }
     case "openKanban": {

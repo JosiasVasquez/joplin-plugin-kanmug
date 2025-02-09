@@ -62,7 +62,10 @@ export class JoplinService {
     }
 
     openNote(noteId: string) {
-        joplin.commands.execute("openNote", noteId);
+        // The "openNote" command can not open a note
+        // where its parent_id is ""
+        // So we use "openItem" instead
+        joplin.commands.execute("openItem", `:/${noteId}`);
     }
 
     onNoteChange(listener: NoteChangeListener) {
