@@ -89,7 +89,11 @@ function App() {
 
   const handleRefresh = React.useCallback(() => {
     if (!isRefreshDisabled) {
-      dispatch({ type: "poll" });
+      dispatch({ type: "poll", 
+        payload: {
+          showReloadedToast: true,
+        },
+       });
       setIsRefreshDisabled(true);
       setTimeout(() => setIsRefreshDisabled(false), REFRESH_DISABLED_TIME);
     }

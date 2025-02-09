@@ -32,6 +32,18 @@ const recentKanbanStore = new RecentKanbanStore();
 // UI VIEWS
 
 let dialogView: string | undefined;
+
+let toastCounter = 0;
+async function toast(message: string,
+  type: "success" | "error" = "success",
+  duration: number = 3000, 
+) {
+  await (joplin.views.dialogs as any).showToast(
+    {message, 
+      duration: duration + (toastCounter++ % 50), 
+      type});
+}
+
 /**
  * Constructs and shows the UI configurator.
  * @returns The newly generated YAML, without ```kanban fence.
@@ -241,6 +253,8 @@ async function showConfirmDialog(message: string): Promise<boolean> {
 async function handleQueuedKanbanMessage(msg: Action) {
   if (!openBoard) return;
 
+  let showReloadedToast = false;
+
   switch (msg.type) {
     case "settings": {
       const { target } = msg.payload;
@@ -337,6 +351,7 @@ async function handleQueuedKanbanMessage(msg: Action) {
 
     case "poll":
       // No need to send to boardView
+      showReloadedToast = msg.payload?.showReloadedToast ?? false;
       break;
     
     // Propagete action to the active board
@@ -380,6 +395,10 @@ async function handleQueuedKanbanMessage(msg: Action) {
         openBoard.parsedConfig?.display?.markdown == undefined)
     )
       setConfigNote(openBoard.configNoteId, null, getMdTable(newState));
+  }
+
+  if (showReloadedToast) {
+    toast("Reloaded");
   }
 
   return newState;

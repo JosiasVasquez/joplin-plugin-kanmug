@@ -14,6 +14,9 @@ export interface LoadAction {
 
 export interface PollAction {
   type: "poll";
+  payload?: {
+    showReloadedToast?: boolean;
+  };
 }
 
 export interface SettingsAction {
