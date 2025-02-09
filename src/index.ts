@@ -321,6 +321,8 @@ async function handleQueuedKanbanMessage(msg: Action) {
       
       if (!confirmed) break;
       
+      openBoard.removeNoteCache([msg.payload.noteId]);
+
       await updateBoardByAction(msg);
       break;
     }
