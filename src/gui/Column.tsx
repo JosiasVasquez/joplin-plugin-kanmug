@@ -9,11 +9,18 @@ import DraggableCard from "./DraggableCard";
 import { useDroppableArea } from "./DragDrop";
 import { useDebouncedFunc } from "../hooks/debouncer";
 import { useRefState } from "./hooks"
+import { MainContext } from "./MainContext";
 
 const dragEventDebounceTime = 100;
 const clickEventThrottleTime = 500;
 
-export default function ({ name, notes }: { name: string; notes: NoteData[] }) {
+type Props = {
+  name: string;
+  link?: string;
+  notes: NoteData[];
+}
+
+export default function ({ name, link, notes }: Props) {
   const dispatch = useContext(DispatchContext);
   const { dropRef, handlerId, isOver } = useDroppableArea({
     colName: name,
@@ -96,14 +103,31 @@ export default function ({ name, notes }: { name: string; notes: NoteData[] }) {
     });
   };
 
+  const { send } = useContext(MainContext);
+  
+  const handleTitleClick = React.useCallback(() => {
+    if (link) {
+      send({ 
+        type: "columnTitleClicked", 
+        payload: { link: link }
+      });
+    }
+  }, [name, link, send]);
+
   return (
     <Column>
       <ContextMenu options={["Edit", "Delete"]} onSelect={handleMenu}>
         <ColumnHeader>
-          {name}{" "}
-          <AddIconCont onClick={handleNewNote}>
-            <IoMdAdd size="25px" />
-          </AddIconCont>{" "}
+          {link ? (
+            <ColumnTitle onClick={handleTitleClick}>
+              {name}
+            </ColumnTitle>
+          ) : (
+            <span>{name}</span>
+          )}
+            <AddIconCont onClick={handleNewNote}>
+              <IoMdAdd />
+            </AddIconCont>
         </ColumnHeader>
       </ContextMenu>
       <DroppableAreaContainer
@@ -140,7 +164,7 @@ const Column = styled("div")({
 
 const ColumnHeader = styled("div")({
   display: "flex",
-  justifyContent: "center",
+  justifyContent: "space-between",
   alignItems: "center",
   fontSize: "1.1rem",
   fontWeight: "bold",
@@ -185,3 +209,13 @@ const DroppableArea = styled("div")<{ isVisible?: boolean }>(
     pointerEvents: isVisible ? "auto" : "none"
   })
 );
+
+const ColumnTitle = styled("div")({
+  cursor: "pointer",
+  "&:hover": {
+    opacity: 0.7,
+  },
+  "&:active": {
+    opacity: 0.5,
+  },
+});

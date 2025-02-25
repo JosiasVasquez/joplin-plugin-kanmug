@@ -161,8 +161,8 @@ function App() {
 
       {board.columns && (
         <ColumnsCont>
-          {notesToShow?.map(({ name, notes }) => (
-            <Column key={name} name={name} notes={notes} />
+          {notesToShow?.map(({ name, link, notes }) => (
+            <Column key={name} name={name} link={link} notes={notes} />
           ))}
         </ColumnsCont>
       )}

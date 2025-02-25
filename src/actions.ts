@@ -108,6 +108,14 @@ export interface OpenKanbanAction {
     noteId: string;
   };
 }
+
+export interface ColumnTitleClickedAction {
+  type: "columnTitleClicked";
+  payload: {
+    link: string;
+  };
+}
+
 export type Action =
   | MoveNoteAction
   | LoadAction
@@ -125,4 +133,5 @@ export type Action =
   | InsertNoteToColumnAction
   | RequestToShowRecentKanbanAction
   | OpenKanbanAction
-  | RequestToRemoveRecentKanbanItemAction;
+  | RequestToRemoveRecentKanbanItemAction
+  | ColumnTitleClickedAction;

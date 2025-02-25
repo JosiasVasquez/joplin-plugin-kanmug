@@ -33,6 +33,7 @@ export interface Config {
     name: string;
     backlog?: boolean;
     newNoteTitle?: string;
+    link?: string;
   }[];
   display: {
     markdown: string;
@@ -77,6 +78,7 @@ export interface Rule {
 
 export interface BoardStateColumn {
   name: string;
+  link?: string;
   notes: NoteData[];
 }
 

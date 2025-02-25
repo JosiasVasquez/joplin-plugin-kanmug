@@ -14,7 +14,6 @@ import {
   accessBoardState,
   NoteDataMonad,
 } from "./types";
-import { DateTime } from "luxon";
 import { TemplateRenderer } from "./utils/templateRenderer";
 
 interface Column {
@@ -278,7 +277,13 @@ export default class Board {
           return a.createdTime < b.createdTime ? +1 : -1;
         })
       );
-      state.columns = sortedColumns;
+      state.columns = sortedColumns.map( column => {
+        const link = this.parsedConfig?.columns.find(c => c.name === column.name)?.link;
+        return {
+          ...column,
+          link: link ? link.trim() : undefined
+        };
+      });
       state.hiddenTags = this.hiddenTags;
     } else {
       state.messages = this.errorMessages;

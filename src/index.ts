@@ -22,6 +22,7 @@ import { Debouncer } from "./utils/debouncer";
 import { AsyncQueue } from "./utils/asyncQueue";
 import { SettingItemType } from "api/types";
 import { RECENT_KANBANS_STORAGE_KEY, RecentKanbanStore } from "./recentKanbanStore";
+import { LinkParser, LinkType } from "./utils/linkParser";
 
 const joplinService = new JoplinService();
 joplinService.start();
@@ -153,7 +154,7 @@ function hideBoard() {
  * Try loading a config from noteId. If succesful, replace the current board,
  * if not destroy it (because we are assuming the config became invalid).
  */
-async function reloadConfig(noteId: string) {
+async function reloadConfig(noteId: string): Promise<boolean> {
   const note = await getConfigNote(noteId);
   const board =
     noteId === openBoard?.configNoteId
@@ -165,9 +166,11 @@ async function reloadConfig(noteId: string) {
     openBoard = board;
     recentKanbanStore.prependKanban(noteId, note.title);
     await recentKanbanStore.save();
+    return true;
   }
   // Do nothing if it is not valid. 
   // User could close the kanban by using the "x" button
+  return false;
 }
 
 // EVENT HANDLERS
@@ -191,6 +194,7 @@ async function postInsertNoteToColumn(msg: InsertNoteToColumnAction) {
   openBoard.appendNoteCache(noteData);
 }
 
+const linkParser = new LinkParser();
 const kanbanMessageQueue = new AsyncQueue();
 /**
  * Handle messages coming from the webview.
@@ -236,6 +240,28 @@ async function handleKanbanMessage(msg: Action) {
       await reloadConfig(msg.payload.noteId);
       refreshUI();
       return;
+    }
+
+    case "columnTitleClicked": {
+      const { link } = msg.payload;
+      const parsedLink = linkParser.parse(link);
+
+      if (parsedLink.type !== LinkType.NoteLink) {
+        toast("Invalid column link", "error");
+        break;
+      }
+
+      try {
+        const valid = await reloadConfig(parsedLink.noteId ?? "");
+        if (valid) {
+          refreshUI();
+        } else {
+          joplinService.openNote(link);
+        }
+      } catch (error) {
+        toast(`Error: Could not open note with ID ${link}`, "error");
+      }
+      break;
     }
   }
   return kanbanMessageQueue.enqueue(handleQueuedKanbanMessage, msg).catch(
