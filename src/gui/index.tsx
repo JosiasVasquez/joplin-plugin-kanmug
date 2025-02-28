@@ -8,14 +8,45 @@ import { capitalize } from "../utils";
 import { DispatchFn, useRemoteBoard } from "./hooks";
 import { DragDropContext } from "./DragDrop";
 import Column from "./Column";
-import type { Message } from "../types";
-import { MainContext } from "./MainContext";
+import type { Board, BoardState, Message } from "../types";
+import { MainContext, useMainContext } from "./MainContext";
 import { RecentKanbansPanel, useRecentKanbansPanelHandle } from "./RecentKanbansPanel";
 
 export const DispatchContext = React.createContext<DispatchFn>(async () => {});
 export const IsWaitingContext = React.createContext<boolean>(false);
 
 const REFRESH_DISABLED_TIME = 1000;
+
+const LoadingCont = styled("div")({
+  display: "flex",
+  flexDirection: "row",
+  alignItems: "center",
+  justifyContent: "start",
+});
+
+
+const IconCont = styled("div")({
+  margin: "auto 0.1em",
+  padding: "0.1em",
+  display: "flex",
+  justifyContent: "center",
+  alignItems: "center",
+  borderRadius: "5px",
+  cursor: "pointer",
+
+  "&:nth-child(3)": {
+    marginLeft: "auto",
+  },
+  "&:hover": {
+    backgroundColor: "var(--joplin-background-color-hover3)",
+  },
+  "& > svg": {
+    width: "1.3em",
+    height: "1.3em",
+    color: "var(--joplin-color3)",
+  },
+});
+
 
 function MessageBox({
   message,
@@ -51,8 +82,9 @@ function MessageBox({
   );
 }
 
-function App() {
-  const [board, dispatch, send] = useRemoteBoard();
+function Content(props: { board?: BoardState }) {
+  const { board } = props;
+  const { dispatch, send } = useMainContext();
   const [isRefreshDisabled, setIsRefreshDisabled] = useState(false);
   const [kanbans, setKanbans] = useState<{noteId: string, title: string}[]>([]);
 
@@ -103,13 +135,15 @@ function App() {
     send({ type: "requestToShowRecentKanban" });
   }, [dispatch]);
 
+  const closeKanban = React.useCallback(() => {
+    send({ type: "close" });
+  }, [dispatch]);
+
   const cont = board ? (
     <Container>
       <Header>
         <IconCont
-          onClick={() => {
-            dispatch({ type: "close" })
-          }}
+          onClick={closeKanban}
         >
           <IoMdClose size="20px"/>
         </IconCont>
@@ -171,9 +205,21 @@ function App() {
       />
     </Container>
   ) : (
-    <h1>Loading...</h1>
+    <h1>
+      <LoadingCont>
+          <IconCont onClick={closeKanban}>
+            <IoMdClose size="20px"/>
+          </IconCont>        
+          <div>Loading...</div>
+      </LoadingCont>
+    </h1>
   );
 
+  return cont;
+}
+
+function App() {
+  const [board, dispatch, send] = useRemoteBoard();
   const mainContextValue = React.useMemo(() => ({ 
     dispatch,
     send
@@ -183,7 +229,9 @@ function App() {
   return (
     <MainContext.Provider value={mainContextValue}>
       <DispatchContext.Provider value={dispatch}>
-        <DragDropContext>{cont}</DragDropContext>
+        <DragDropContext>
+          <Content board={board} />
+        </DragDropContext>
       </DispatchContext.Provider>
     </MainContext.Provider>
   );
@@ -217,27 +265,6 @@ const ColumnsCont = styled("div")({
   marginBottom: "20px",
 });
 
-const IconCont = styled("div")({
-  margin: "auto 0.1em",
-  padding: "0.1em",
-  display: "flex",
-  justifyContent: "center",
-  alignItems: "center",
-  borderRadius: "5px",
-  cursor: "pointer",
-
-  "&:nth-child(3)": {
-    marginLeft: "auto",
-  },
-  "&:hover": {
-    backgroundColor: "var(--joplin-background-color-hover3)",
-  },
-  "& > svg": {
-    width: "1.3em",
-    height: "1.3em",
-    color: "var(--joplin-color3)",
-  },
-});
 
 const MessagesCont = styled("div")({
   padding: "0 15px",
