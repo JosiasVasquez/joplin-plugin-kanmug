@@ -23,12 +23,14 @@ import { AsyncQueue } from "./utils/asyncQueue";
 import { SettingItemType } from "api/types";
 import { RECENT_KANBANS_STORAGE_KEY, RecentKanbanStore } from "./recentKanbanStore";
 import { LinkParser, LinkType } from "./utils/linkParser";
-
+import { KanbanApp } from "./kanbanApp";
 const joplinService = new JoplinService();
 joplinService.start();
 let openBoard: Board | undefined;
 
 const recentKanbanStore = new RecentKanbanStore();
+
+const kanbanApp = new KanbanApp();
 
 // UI VIEWS
 
@@ -202,7 +204,11 @@ const kanbanMessageQueue = new AsyncQueue();
  * Almost all changes to the state occur in this method.
  */
 async function handleKanbanMessage(msg: Action) {
-  if (!openBoard) return;
+  if (msg.type === "close") {
+    openBoard = undefined;
+    return hideBoard();
+  }
+  if (!openBoard) return kanbanApp.handleNoOpenedBoard();
 
   switch (msg.type) {
     // Those actions do not update state, so it can return immediately
@@ -277,7 +283,7 @@ async function showConfirmDialog(message: string): Promise<boolean> {
 }
 
 async function handleQueuedKanbanMessage(msg: Action) {
-  if (!openBoard) return;
+  if (!openBoard) return kanbanApp.handleNoOpenedBoard();
 
   let showReloadedToast = false;
 
@@ -371,10 +377,6 @@ async function handleQueuedKanbanMessage(msg: Action) {
     case "load":
       break;
 
-    case "close":
-      openBoard = undefined;
-      return hideBoard();
-
     case "poll":
       // No need to send to boardView
       showReloadedToast = msg.payload?.showReloadedToast ?? false;
@@ -453,6 +455,9 @@ async function handleNewlyOpenedNote(newNoteId: string) {
     await reloadConfig(newNoteId);
     if (openBoard) {
       showBoard();
+
+      // #2 show only "Loading..." instead of Kanban board
+      refreshUI();
     }
   }
 }
