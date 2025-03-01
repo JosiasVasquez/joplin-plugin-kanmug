@@ -1,6 +1,6 @@
 import joplin from 'api';
 import { tryWaitUntilTimeout } from '../utils/timer';
-import { JoplinTag, NoteData, NoteDataMonad } from '../types';
+import { NoteData, NoteDataMonad } from '../types';
 
 type NoteChangeListener = (noteId: string) => Promise<boolean>;
 
@@ -9,6 +9,7 @@ const DEFAULT_TIMEOUT = 500;
 export class JoplinService {
     onNoteChangeListeners: NoteChangeListener[] = [];
     onNoteSelectionChangeListeners: NoteChangeListener[] = [];
+    toastCounter = 0;
 
     start() {
         joplin.workspace.onNoteChange(async ({ id }) => {
@@ -94,5 +95,15 @@ export class JoplinService {
         } catch (e) {
             return null;
         }
+    }
+
+    async toast(message: string,
+        type: "success" | "error" = "success",
+        duration: number = 3000, 
+      ) {
+        await (joplin.views.dialogs as any).showToast(
+          {message, 
+            duration: duration + (this.toastCounter++ % 50), 
+            type});
     }
 }

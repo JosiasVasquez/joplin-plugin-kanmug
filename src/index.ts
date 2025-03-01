@@ -18,7 +18,6 @@ import type { Action, InsertNoteToColumnAction } from "./actions";
 import type { ConfigUIData } from "./configui";
 import { type Config, type BoardState, NoteData, NoteDataMonad } from "./types";
 import { JoplinService } from "./services/joplinService";
-import { Debouncer } from "./utils/debouncer";
 import { AsyncQueue } from "./utils/asyncQueue";
 import { SettingItemType } from "api/types";
 import { RECENT_KANBANS_STORAGE_KEY, RecentKanbanStore } from "./recentKanbanStore";
@@ -26,33 +25,18 @@ import { LinkParser, LinkType } from "./utils/linkParser";
 import { KanbanApp } from "./kanbanApp";
 const joplinService = new JoplinService();
 joplinService.start();
-let openBoard: Board | undefined;
 
-const recentKanbanStore = new RecentKanbanStore();
-
-const kanbanApp = new KanbanApp();
+const kanbanApp = new KanbanApp(joplinService);
 
 // UI VIEWS
-
 let dialogView: string | undefined;
-
-let toastCounter = 0;
-async function toast(message: string,
-  type: "success" | "error" = "success",
-  duration: number = 3000, 
-) {
-  await (joplin.views.dialogs as any).showToast(
-    {message, 
-      duration: duration + (toastCounter++ % 50), 
-      type});
-}
 
 /**
  * Constructs and shows the UI configurator.
  * @returns The newly generated YAML, without ```kanban fence.
  */
 async function showConfigUI(targetPath: string) {
-  if (!openBoard || !openBoard.parsedConfig) return;
+  if (!kanbanApp.openBoard || !kanbanApp.openBoard.parsedConfig) return;
 
   if (!dialogView) {
     dialogView = await joplin.views.dialogs.create("kanban-config-ui");
@@ -63,14 +47,14 @@ async function showConfigUI(targetPath: string) {
   const config: Config =
     targetPath === "columnnew"
       ? {
-          ...openBoard.parsedConfig,
-          columns: [...openBoard.parsedConfig.columns, { name: "New Column" }],
+          ...kanbanApp.openBoard.parsedConfig,
+          columns: [...kanbanApp.openBoard.parsedConfig.columns, { name: "New Column" }],
         }
-      : openBoard.parsedConfig;
+      : kanbanApp.openBoard.parsedConfig;
 
   if (targetPath.startsWith("columns.")) {
     const [, colName] = targetPath.split(".", 2);
-    const colIdx = openBoard.parsedConfig.columns.findIndex(
+    const colIdx = kanbanApp.openBoard.parsedConfig.columns.findIndex(
       ({ name }) => name === colName
     );
     targetPath = `columns.${colIdx}`;
@@ -100,24 +84,6 @@ async function showConfigUI(targetPath: string) {
   }
 }
 
-const refreshUIDebouncer = new Debouncer(100);
-
-const refreshUI = () => {
-  refreshUIDebouncer.debounce(async () => {
-    if (boardView) {
-      joplin.views.panels.postMessage(boardView, {
-        type: "refresh"
-      });
-    }
-  }).catch((e) => {
-    if (e instanceof Error && e.name === "AbortedError") {
-      // Ignore errors
-    } else {
-      console.error("Error refreshing UI", e);
-    }
-  });
-}
-
 let boardView: string | undefined;
 /**
  * Constructs and shows the main kanban panel.
@@ -125,6 +91,7 @@ let boardView: string | undefined;
 async function showBoard() {
   if (!boardView) {
     boardView = await joplin.views.panels.create("kanban");
+    kanbanApp.boardView = boardView;
     // Template tags seem to be the easiest way to pass static data to a view
     // If a better way is found, this should be changed
     const html = `
@@ -152,48 +119,26 @@ function hideBoard() {
 
 // CONFIG HANDLING
 
-/**
- * Try loading a config from noteId. If succesful, replace the current board,
- * if not destroy it (because we are assuming the config became invalid).
- */
-async function reloadConfig(noteId: string): Promise<boolean> {
-  const note = await getConfigNote(noteId);
-  const board =
-    noteId === openBoard?.configNoteId
-      ? openBoard
-      : new Board(noteId, note.parent_id, note.title);
-  const ymlConfig = getYamlConfig(note.body);
-  const valid = ymlConfig !== null && (await board.loadConfig(ymlConfig));
-  if (valid) {
-    openBoard = board;
-    recentKanbanStore.prependKanban(noteId, note.title);
-    await recentKanbanStore.save();
-    return true;
-  }
-  // Do nothing if it is not valid. 
-  // User could close the kanban by using the "x" button
-  return false;
-}
 
 // EVENT HANDLERS
 
 async function updateBoardByAction(msg: Action) {
-  if (!openBoard) return;
-  const allNotesOld = await searchNotes(openBoard.rootNotebookName, openBoard.baseTags);
-  const oldState: BoardState = openBoard.getBoardState(allNotesOld);
-  const updates = openBoard.getBoardUpdate(msg, oldState);
+  if (!kanbanApp.openBoard) return;
+  const allNotesOld = await searchNotes(kanbanApp.openBoard.rootNotebookName, kanbanApp.openBoard.baseTags);
+  const oldState: BoardState = kanbanApp.openBoard.getBoardState(allNotesOld);
+  const updates = kanbanApp.openBoard.getBoardUpdate(msg, oldState);
   for (const query of updates) {
     await executeUpdateQuery(query);
-    openBoard.executeUpdateQuery(query);
+    kanbanApp.openBoard.executeUpdateQuery(query);
   }
 }
 
 async function postInsertNoteToColumn(msg: InsertNoteToColumnAction) {
-  if (!openBoard) return;
+  if (!kanbanApp.openBoard) return;
   const { noteId, columnName, index } = msg.payload;
   let noteData = await joplinService.getNoteDataById(noteId);
   noteData.order = Date.now();
-  openBoard.appendNoteCache(noteData);
+  kanbanApp.openBoard.appendNoteCache(noteData);
 }
 
 const linkParser = new LinkParser();
@@ -205,10 +150,10 @@ const kanbanMessageQueue = new AsyncQueue();
  */
 async function handleKanbanMessage(msg: Action) {
   if (msg.type === "close") {
-    openBoard = undefined;
-    return hideBoard();
+    // Allow to close the panel but no kanban is opened
+    return kanbanApp.handleCloseMessage(msg);
   }
-  if (!openBoard) return kanbanApp.handleNoOpenedBoard();
+  if (!kanbanApp.openBoard) return kanbanApp.handleNoOpenedBoard();
 
   switch (msg.type) {
     // Those actions do not update state, so it can return immediately
@@ -217,7 +162,7 @@ async function handleKanbanMessage(msg: Action) {
         joplin.views.panels.postMessage(boardView, {
           type: "showRecentKanban",
           payload: {
-            recentKanbans: recentKanbanStore.getKanbans(),
+            recentKanbans: kanbanApp.getRecentKanbans(),
           },
         });
       }
@@ -225,8 +170,7 @@ async function handleKanbanMessage(msg: Action) {
     }
 
     case "requestToRemoveRecentKanbanItem": {
-      recentKanbanStore.removeKanban(msg.payload.noteId);
-      recentKanbanStore.save();
+      await kanbanApp.removeRecentKanban(msg.payload.noteId);
       return;
     }
 
@@ -239,12 +183,12 @@ async function handleKanbanMessage(msg: Action) {
       return;
     }
     case "openKanbanConfigNote": {
-      await joplinService.openNote(openBoard.configNoteId);
+      await joplinService.openNote(kanbanApp.openBoard.configNoteId);
       return;
     }
     case "openKanban": {
-      await reloadConfig(msg.payload.noteId);
-      refreshUI();
+      await kanbanApp.reloadConfig(msg.payload.noteId);
+      kanbanApp.refreshUI();
       return;
     }
 
@@ -253,19 +197,19 @@ async function handleKanbanMessage(msg: Action) {
       const parsedLink = linkParser.parse(link);
 
       if (parsedLink.type !== LinkType.NoteLink) {
-        toast("Invalid column link", "error");
+        joplinService.toast("Invalid column link", "error");
         break;
       }
 
       try {
-        const valid = await reloadConfig(parsedLink.noteId ?? "");
+        const valid = await kanbanApp.reloadConfig(parsedLink.noteId ?? "");
         if (valid) {
-          refreshUI();
+          kanbanApp.refreshUI();
         } else {
           joplinService.openNote(link);
         }
       } catch (error) {
-        toast(`Error: Could not open note with ID ${link}`, "error");
+        joplinService.toast(`Error: Could not open note with ID ${link}`, "error");
       }
       break;
     }
@@ -283,7 +227,7 @@ async function showConfirmDialog(message: string): Promise<boolean> {
 }
 
 async function handleQueuedKanbanMessage(msg: Action) {
-  if (!openBoard) return kanbanApp.handleNoOpenedBoard();
+  if (!kanbanApp.openBoard) return kanbanApp.handleNoOpenedBoard();
 
   let showReloadedToast = false;
 
@@ -292,14 +236,14 @@ async function handleQueuedKanbanMessage(msg: Action) {
       const { target } = msg.payload;
       const newConf = await showConfigUI(target);
       if (newConf) {
-        await setConfigNote(openBoard.configNoteId, newConf);
-        await reloadConfig(openBoard.configNoteId);
+        await setConfigNote(kanbanApp.openBoard.configNoteId, newConf);
+        await kanbanApp.reloadConfig(kanbanApp.openBoard.configNoteId);
       }
       break;
     }
 
     case "deleteCol": {
-      if (!openBoard.parsedConfig) break;
+      if (!kanbanApp.openBoard.parsedConfig) break;
       
       const confirmed = await showConfirmDialog(
         `Are you sure you want to delete the column "${msg.payload.colName}"?`
@@ -307,26 +251,26 @@ async function handleQueuedKanbanMessage(msg: Action) {
       
       if (!confirmed) break;
 
-      const colIdx = openBoard.parsedConfig.columns.findIndex(
+      const colIdx = kanbanApp.openBoard.parsedConfig.columns.findIndex(
         ({ name }) => name === msg.payload.colName
       );
       const newConf: Config = {
-        ...openBoard.parsedConfig,
+        ...kanbanApp.openBoard.parsedConfig,
         columns: [
-          ...openBoard.parsedConfig.columns.slice(0, colIdx),
-          ...openBoard.parsedConfig.columns.slice(colIdx + 1),
+          ...kanbanApp.openBoard.parsedConfig.columns.slice(0, colIdx),
+          ...kanbanApp.openBoard.parsedConfig.columns.slice(colIdx + 1),
         ],
       };
-      await setConfigNote(openBoard.configNoteId, yaml.dump(newConf));
-      await reloadConfig(openBoard.configNoteId);
+      await setConfigNote(kanbanApp.openBoard.configNoteId, yaml.dump(newConf));
+      await kanbanApp.reloadConfig(kanbanApp.openBoard.configNoteId);
       break;
     }
 
     case "addColumn": {
       const newConf = await showConfigUI("columnnew");
       if (newConf) {
-        await setConfigNote(openBoard.configNoteId, newConf);
-        await reloadConfig(openBoard.configNoteId);
+        await setConfigNote(kanbanApp.openBoard.configNoteId, newConf);
+        await kanbanApp.reloadConfig(kanbanApp.openBoard.configNoteId);
       }
       break;
     }
@@ -334,19 +278,19 @@ async function handleQueuedKanbanMessage(msg: Action) {
     case "messageAction": {
       const { messageId, actionName } = msg.payload;
       if (messageId === "reload" && actionName === "reload") {
-        await reloadConfig(openBoard.configNoteId);
+        await kanbanApp.reloadConfig(kanbanApp.openBoard.configNoteId);
       }
       // New message action add here
       break;
     }
 
     case "newNote": {
-      const allNotesOld = await searchNotes(openBoard.rootNotebookName, openBoard.baseTags);
-      const oldState: BoardState = openBoard.getBoardState(allNotesOld);
+      const allNotesOld = await searchNotes(kanbanApp.openBoard.rootNotebookName, kanbanApp.openBoard.baseTags);
+      const oldState: BoardState = kanbanApp.openBoard.getBoardState(allNotesOld);
       const newNoteId = await joplinService.createUntitledNote();
       msg.payload.noteId = newNoteId;
       const noteMonad = NoteDataMonad.fromNewNote(newNoteId);
-      for (const query of openBoard.getBoardUpdate(msg, oldState)) {
+      for (const query of kanbanApp.openBoard.getBoardUpdate(msg, oldState)) {
         await executeUpdateQuery(query);
         noteMonad.applyUpdateQuery(query);
       }
@@ -356,7 +300,7 @@ async function handleQueuedKanbanMessage(msg: Action) {
       const timestamp = Date.now();
       createdNote.order = timestamp;
       createdNote.createdTime = timestamp;
-      openBoard.appendNoteCache(createdNote);
+      kanbanApp.openBoard.appendNoteCache(createdNote);
       break;
     }
 
@@ -367,7 +311,7 @@ async function handleQueuedKanbanMessage(msg: Action) {
       
       if (!confirmed) break;
       
-      openBoard.removeNoteCache([msg.payload.noteId]);
+      kanbanApp.openBoard.removeNoteCache([msg.payload.noteId]);
 
       await updateBoardByAction(msg);
       break;
@@ -390,14 +334,14 @@ async function handleQueuedKanbanMessage(msg: Action) {
       }
     }
   }
-  const searchedNotes = await searchNotes(openBoard.rootNotebookName, openBoard.baseTags);
-  openBoard.removeNoteCache(searchedNotes.map(note => note.id));
-  const allNotesNew = openBoard.mergeCachedNotes(searchedNotes);
-  const newState: BoardState = openBoard.getBoardState(allNotesNew);
+  const searchedNotes = await searchNotes(kanbanApp.openBoard.rootNotebookName, kanbanApp.openBoard.baseTags);
+  kanbanApp.openBoard.removeNoteCache(searchedNotes.map(note => note.id));
+  const allNotesNew = kanbanApp.openBoard.mergeCachedNotes(searchedNotes);
+  const newState: BoardState = kanbanApp.openBoard.getBoardState(allNotesNew);
   const currentYaml = getYamlConfig(
-    (await getConfigNote(openBoard.configNoteId)).body
+    (await getConfigNote(kanbanApp.openBoard.configNoteId)).body
   );
-  if (currentYaml !== openBoard.configYaml) {
+  if (currentYaml !== kanbanApp.openBoard.configYaml) {
     if (!currentYaml) return hideBoard();
     const { error } = parseConfigNote(currentYaml);
     newState.messages.push(
@@ -413,20 +357,20 @@ async function handleQueuedKanbanMessage(msg: Action) {
 
   if (msg.type !== "poll") {
     if (
-      openBoard.isValid &&
-      openBoard.parsedConfig?.display?.markdown == "list"
+      kanbanApp.openBoard.isValid &&
+      kanbanApp.openBoard.parsedConfig?.display?.markdown == "list"
     )
-      setConfigNote(openBoard.configNoteId, null, getMdList(newState));
+      setConfigNote(kanbanApp.openBoard.configNoteId, null, getMdList(newState));
     else if (
-      openBoard.isValid &&
-      (openBoard.parsedConfig?.display?.markdown == "table" ||
-        openBoard.parsedConfig?.display?.markdown == undefined)
+      kanbanApp.openBoard.isValid &&
+      (kanbanApp.openBoard.parsedConfig?.display?.markdown == "table" ||
+        kanbanApp.openBoard.parsedConfig?.display?.markdown == undefined)
     )
-      setConfigNote(openBoard.configNoteId, null, getMdTable(newState));
+      setConfigNote(kanbanApp.openBoard.configNoteId, null, getMdTable(newState));
   }
 
   if (showReloadedToast) {
-    toast("Reloaded");
+    joplinService.toast("Reloaded");
   }
 
   return newState;
@@ -438,26 +382,26 @@ async function handleQueuedKanbanMessage(msg: Action) {
  */
 async function handleNewlyOpenedNote(newNoteId: string) {
 
-  if (openBoard) {
-    if (openBoard.configNoteId === newNoteId) return;
-    if (await openBoard.isNoteIdOnBoard(newNoteId)) return;
+  if (kanbanApp.openBoard) {
+    if (kanbanApp.openBoard.configNoteId === newNoteId) return;
+    if (await kanbanApp.openBoard.isNoteIdOnBoard(newNoteId)) return;
     else {
-      const originalOpenBoard = openBoard;
-      await reloadConfig(newNoteId);
-      if (openBoard && openBoard.isValid && originalOpenBoard!==openBoard) {
-        refreshUI();
+      const originalOpenBoard = kanbanApp.openBoard;
+      await kanbanApp.reloadConfig(newNoteId);
+      if (kanbanApp.openBoard && kanbanApp.openBoard.isValid && originalOpenBoard!==kanbanApp.openBoard) {
+        kanbanApp.refreshUI();
       }
       return;
     }
   }
 
-  if (!openBoard || (openBoard as Board).configNoteId !== newNoteId) {
-    await reloadConfig(newNoteId);
-    if (openBoard) {
+  if (!kanbanApp.openBoard || (kanbanApp.openBoard as Board).configNoteId !== newNoteId) {
+    await kanbanApp.reloadConfig(newNoteId);
+    if (kanbanApp.openBoard) {
       showBoard();
 
       // #2 show only "Loading..." instead of Kanban board
-      refreshUI();
+      kanbanApp.refreshUI();
     }
   }
 }
@@ -475,12 +419,12 @@ joplin.plugins.register({
     );
 
     joplin.workspace.onNoteChange(async ({ id }) => {
-      if (!openBoard) return;
-      if (openBoard.configNoteId === id) {
-        if (!openBoard.isValid) await reloadConfig(id);
-        refreshUI();
-      } else if (await openBoard.isNoteIdOnBoard(id)) {
-        refreshUI();
+      if (!kanbanApp.openBoard) return;
+      if (kanbanApp.openBoard.configNoteId === id) {
+        if (!kanbanApp.openBoard.isValid) await kanbanApp.reloadConfig(id);
+        kanbanApp.refreshUI();
+      } else if (await kanbanApp.openBoard.isNoteIdOnBoard(id)) {
+        kanbanApp.refreshUI();
       }
     });
 
@@ -495,6 +439,6 @@ joplin.plugins.register({
     };
     
     await joplin.settings.registerSettings(settings);
-    await recentKanbanStore.load();
+    await kanbanApp.load();
   },
 });
