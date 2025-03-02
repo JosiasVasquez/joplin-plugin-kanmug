@@ -85,15 +85,11 @@ async function showConfigUI(targetPath: string) {
 }
 
 let boardView: string | undefined;
-/**
- * Constructs and shows the main kanban panel.
- */
-async function showBoard() {
+
+async function createBoard() {
   if (!boardView) {
     boardView = await joplin.views.panels.create("kanban");
     kanbanApp.boardView = boardView;
-    // Template tags seem to be the easiest way to pass static data to a view
-    // If a better way is found, this should be changed
     const html = `
       <template id="date-fmt">${await joplin.settings.globalValue(
         "dateFormat"
@@ -104,17 +100,8 @@ async function showBoard() {
     await joplin.views.panels.setHtml(boardView, html);
     await joplin.views.panels.addScript(boardView, "gui/main.css");
     await joplin.views.panels.addScript(boardView, "gui/index.js");
-    joplin.views.panels.onMessage(boardView, handleKanbanMessage);
-  } else if (!(await joplin.views.panels.visible(boardView))) {
-    await joplin.views.panels.show(boardView);
+    joplin.views.panels.onMessage(boardView, handleKanbanMessage);    
   }
-}
-
-/**
- * Hides the active kanban panel.
- */
-function hideBoard() {
-  if (boardView) joplin.views.panels.hide(boardView);
 }
 
 // CONFIG HANDLING
@@ -342,7 +329,7 @@ async function handleQueuedKanbanMessage(msg: Action) {
     (await getConfigNote(kanbanApp.openBoard.configNoteId)).body
   );
   if (currentYaml !== kanbanApp.openBoard.configYaml) {
-    if (!currentYaml) return hideBoard();
+    if (!currentYaml) return kanbanApp.hideBoard();
     const { error } = parseConfigNote(currentYaml);
     newState.messages.push(
       error || {
@@ -398,7 +385,7 @@ async function handleNewlyOpenedNote(newNoteId: string) {
   if (!kanbanApp.openBoard || (kanbanApp.openBoard as Board).configNoteId !== newNoteId) {
     await kanbanApp.reloadConfig(newNoteId);
     if (kanbanApp.openBoard) {
-      showBoard();
+      await kanbanApp.showBoard();
 
       // #2 show only "Loading..." instead of Kanban board
       kanbanApp.refreshUI();
@@ -408,8 +395,7 @@ async function handleNewlyOpenedNote(newNoteId: string) {
 
 joplin.plugins.register({
   onStart: async function () {
-    // Have to call this on start otherwise layout from prevoius session is lost
-    showBoard().then(hideBoard);
+    createBoard();
 
     joplin.workspace.onNoteSelectionChange(
       async ({ value }: { value: [string?] }) => {

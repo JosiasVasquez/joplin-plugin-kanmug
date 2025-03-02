@@ -29,6 +29,12 @@ export class KanbanApp {
     await this.recentKanbanStore.load();
   }
 
+  async showBoard() {
+    if (this.boardView) {
+      await joplin.views.panels.show(this.boardView);
+    }
+  }
+
 
   hideBoard() {
     if (this.boardView) {
