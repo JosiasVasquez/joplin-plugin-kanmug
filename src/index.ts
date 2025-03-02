@@ -363,35 +363,6 @@ async function handleQueuedKanbanMessage(msg: Action) {
   return newState;
 }
 
-/**
- * Handle note selection change, check if a new board has been opened, or if we left
- * the domain of the current board.
- */
-async function handleNewlyOpenedNote(newNoteId: string) {
-
-  if (kanbanApp.openBoard) {
-    if (kanbanApp.openBoard.configNoteId === newNoteId) return;
-    if (await kanbanApp.openBoard.isNoteIdOnBoard(newNoteId)) return;
-    else {
-      const originalOpenBoard = kanbanApp.openBoard;
-      await kanbanApp.reloadConfig(newNoteId);
-      if (kanbanApp.openBoard && kanbanApp.openBoard.isValid && originalOpenBoard!==kanbanApp.openBoard) {
-        kanbanApp.refreshUI();
-      }
-      return;
-    }
-  }
-
-  if (!kanbanApp.openBoard || (kanbanApp.openBoard as Board).configNoteId !== newNoteId) {
-    await kanbanApp.reloadConfig(newNoteId);
-    if (kanbanApp.openBoard) {
-      await kanbanApp.showBoard();
-
-      // #2 show only "Loading..." instead of Kanban board
-      kanbanApp.refreshUI();
-    }
-  }
-}
 
 joplin.plugins.register({
   onStart: async function () {
@@ -400,7 +371,7 @@ joplin.plugins.register({
     joplin.workspace.onNoteSelectionChange(
       async ({ value }: { value: [string?] }) => {
         const newNoteId = value?.[0] as string;
-        if (newNoteId) handleNewlyOpenedNote(newNoteId);
+        if (newNoteId) kanbanApp.handleNewlyOpenedNote(newNoteId);
       }
     );
 

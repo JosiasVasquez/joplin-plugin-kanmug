@@ -27,6 +27,11 @@ export class KanbanApp {
 
   async load() {
     await this.recentKanbanStore.load();
+
+    const selectedNote = await joplin.workspace.selectedNote();
+    if (selectedNote) {
+      await this.handleNewlyOpenedNote(selectedNote.id);
+    }
   }
 
   async showBoard() {
@@ -79,6 +84,36 @@ async reloadConfig(noteId: string): Promise<boolean> {
           console.error("Error refreshing UI", e);
         }
     });
+  }
+
+    /**
+     * Handle note selection change, check if a new board has been opened, or if we left
+     * the domain of the current board.
+     */
+    async  handleNewlyOpenedNote(newNoteId: string) {
+
+    if (this.openBoard) {
+      if (this.openBoard.configNoteId === newNoteId) return;
+      if (await this.openBoard.isNoteIdOnBoard(newNoteId)) return;
+      else {
+        const originalOpenBoard = this.openBoard;
+        await this.reloadConfig(newNoteId);
+        if (this.openBoard && this.openBoard.isValid && originalOpenBoard!==this.openBoard) {
+          this.refreshUI();
+        }
+        return;
+      }
+    }
+  
+    if (!this.openBoard || (this.openBoard as Board).configNoteId !== newNoteId) {
+      await this.reloadConfig(newNoteId);
+      if (this.openBoard) {
+        await this.showBoard();
+  
+        // #2 show only "Loading..." instead of Kanban board
+        this.refreshUI();
+      }
+    }
   }
 
   handleKanbanMessage(msg: Action) {
