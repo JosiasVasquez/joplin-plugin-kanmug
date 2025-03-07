@@ -1,6 +1,6 @@
 export enum LinkType {
   HyperLink = "hyperlink",
-  NoteLink = "notelink", 
+  NoteLink = "notelink",
   InvalidLink = "invalid"
 }
 
@@ -10,53 +10,53 @@ type ParsedLink = {
   url?: string;
 }
 
-const NOTE_ID_PATTERN = /^[a-f0-9]{32}$/;
-const VALID_SCHEMES = ["file:", "http:", "https:", "joplin:"];
+const NoteIDPattern = /^[a-f0-9]{32}$/;
+const ValidSchemes = ["file:", "http:", "https:", "joplin:"];
 
 export class LinkParser {
-  parse(link: string): ParsedLink {
-    if (!link || typeof link !== "string") {
-      return {
-        type: LinkType.InvalidLink,
-      };
-    }
-
-    if (NOTE_ID_PATTERN.test(link)) {
-      return {
-        type: LinkType.NoteLink,
-        noteId: link,
-      };
-    }
-
-    try {
-      const url = new URL(link);
-      
-      if (url.protocol === "joplin:") {
-        const noteId = url.searchParams.get("id");
-        if (noteId && NOTE_ID_PATTERN.test(noteId) && url.pathname.endsWith("/openNote")) {
-          return {
-            type: LinkType.NoteLink,
-            noteId: noteId,
-            url: link
-          };
-        } else {
-          return {
-            type: LinkType.InvalidLink,
-          };
+    parse(link: string): ParsedLink {
+        if (!link || typeof link !== "string") {
+            return {
+                type: LinkType.InvalidLink,
+            };
         }
-      }
 
-      if (VALID_SCHEMES.includes(url.protocol)) {
+        if (NoteIDPattern.test(link)) {
+            return {
+                type: LinkType.NoteLink,
+                noteId: link,
+            };
+        }
+
+        try {
+            const url = new URL(link);
+
+            if (url.protocol === "joplin:") {
+                const noteId = url.searchParams.get("id");
+                if (noteId && NoteIDPattern.test(noteId) && url.pathname.endsWith("/openNote")) {
+                    return {
+                        type: LinkType.NoteLink,
+                        noteId,
+                        url: link,
+                    };
+                }
+                return {
+                    type: LinkType.InvalidLink,
+                };
+            }
+
+            if (ValidSchemes.includes(url.protocol)) {
+                return {
+                    type: LinkType.HyperLink,
+                    url: link,
+                };
+            }
+        } catch {
+            // Ignore invalid URLs
+        }
+
         return {
-          type: LinkType.HyperLink,
-          url: link
+            type: LinkType.InvalidLink,
         };
-      }
-    } catch {
     }
-
-    return {
-      type: LinkType.InvalidLink,
-    };
-  }
 }

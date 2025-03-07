@@ -61,13 +61,13 @@ export interface Command {
 // =================================================================
 
 export enum FileSystemItem {
-	File = 'file',
-	Directory = 'directory',
+	File = "file",
+	Directory = "directory",
 }
 
 export enum ImportModuleOutputFormat {
-	Markdown = 'md',
-	Html = 'html',
+	Markdown = "md",
+	Html = "html",
 }
 
 /**
@@ -230,17 +230,17 @@ export interface CreateMenuItemOptions {
 }
 
 export enum MenuItemLocation {
-	File = 'file',
-	Edit = 'edit',
-	View = 'view',
-	Note = 'note',
-	Tools = 'tools',
-	Help = 'help',
+	File = "file",
+	Edit = "edit",
+	View = "view",
+	Note = "note",
+	Tools = "tools",
+	Help = "help",
 
 	/**
 	 * @deprecated Do not use - same as NoteListContextMenu
 	 */
-	Context = 'context',
+	Context = "context",
 
 	// If adding an item here, don't forget to update isContextMenuItemLocation()
 
@@ -250,9 +250,9 @@ export enum MenuItemLocation {
 	 *
 	 * - `noteIds:string[]`: IDs of the notes that were right-clicked on.
 	 */
-	NoteListContextMenu = 'noteListContextMenu',
+	NoteListContextMenu = "noteListContextMenu",
 
-	EditorContextMenu = 'editorContextMenu',
+	EditorContextMenu = "editorContextMenu",
 
 	/**
 	 * When a command is called from a folder context menu, the
@@ -260,7 +260,7 @@ export enum MenuItemLocation {
 	 *
 	 * - `folderId:string`: ID of the folder that was right-clicked on
 	 */
-	FolderContextMenu = 'folderContextMenu',
+	FolderContextMenu = "folderContextMenu",
 
 	/**
 	 * When a command is called from a tag context menu, the
@@ -268,17 +268,17 @@ export enum MenuItemLocation {
 	 *
 	 * - `tagId:string`: ID of the tag that was right-clicked on
 	 */
-	TagContextMenu = 'tagContextMenu',
+	TagContextMenu = "tagContextMenu",
 }
 
 export function isContextMenuItemLocation(location: MenuItemLocation): boolean {
-	return [
-		MenuItemLocation.Context,
-		MenuItemLocation.NoteListContextMenu,
-		MenuItemLocation.EditorContextMenu,
-		MenuItemLocation.FolderContextMenu,
-		MenuItemLocation.TagContextMenu,
-	].includes(location);
+    return [
+        MenuItemLocation.Context,
+        MenuItemLocation.NoteListContextMenu,
+        MenuItemLocation.EditorContextMenu,
+        MenuItemLocation.FolderContextMenu,
+        MenuItemLocation.TagContextMenu,
+    ].includes(location);
 }
 
 export interface MenuItem {
@@ -297,7 +297,7 @@ export interface MenuItem {
 	/**
 	 * Set to "separator" to create a divider line
 	 */
-	type?: ('normal' | 'separator' | 'submenu' | 'checkbox' | 'radio');
+	type?: ("normal" | "separator" | "submenu" | "checkbox" | "radio");
 
 	/**
 	 * Accelerator associated with the menu item
@@ -331,12 +331,12 @@ export enum ToolbarButtonLocation {
 	/**
 	 * This toolbar in the top right corner of the application. It applies to the note as a whole, including its metadata.
 	 */
-	NoteToolbar = 'noteToolbar',
+	NoteToolbar = "noteToolbar",
 
 	/**
 	 * This toolbar is right above the text editor. It applies to the note body only.
 	 */
-	EditorToolbar = 'editorToolbar',
+	EditorToolbar = "editorToolbar",
 }
 
 export type ViewHandle = string;
@@ -365,15 +365,15 @@ export enum SettingItemType {
 }
 
 export enum SettingItemSubType {
-	FilePathAndArgs = 'file_path_and_args',
-	FilePath = 'file_path', // Not supported on mobile!
-	DirectoryPath = 'directory_path', // Not supported on mobile!
+	FilePathAndArgs = "file_path_and_args",
+	FilePath = "file_path", // Not supported on mobile!
+	DirectoryPath = "directory_path", // Not supported on mobile!
 }
 
 export enum AppType {
-	Desktop = 'desktop',
-	Mobile = 'mobile',
-	Cli = 'cli',
+	Desktop = "desktop",
+	Mobile = "mobile",
+	Cli = "cli",
 }
 
 export enum SettingStorage {
@@ -585,7 +585,7 @@ export enum ContentScriptType {
 	 * }
 	 * ```
 	 */
-	MarkdownItPlugin = 'markdownItPlugin',
+	MarkdownItPlugin = "markdownItPlugin",
 
 	/**
 	 * Registers a new CodeMirror plugin, which should follow the template
@@ -670,5 +670,5 @@ export enum ContentScriptType {
 	 * demo](https://github.com/laurent22/joplin/tree/dev/packages/app-cli/tests/support/plugins/post_messages).
 	 *
 	 */
-	CodeMirrorPlugin = 'codeMirrorPlugin',
+	CodeMirrorPlugin = "codeMirrorPlugin",
 }

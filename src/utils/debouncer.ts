@@ -2,8 +2,11 @@ import { AbortedError } from "../types";
 
 export class Debouncer {
     private timer: NodeJS.Timeout | null = null;
+
     private currentPromise: Promise<any> | null = null;
+
     private rejectFn: ((reason: any) => void) | null = null;
+
     private readonly debounceTime: number;
 
     constructor(debounceTime: number) {
@@ -44,4 +47,4 @@ export class Debouncer {
             this.rejectFn = null;
         }
     }
-} 
+}

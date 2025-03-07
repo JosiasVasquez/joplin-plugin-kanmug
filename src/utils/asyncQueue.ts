@@ -7,12 +7,15 @@ export class AsyncQueue {
         resolve: (value: any) => void;
         reject: (reason: any) => void;
     }> = [];
+
     private isProcessing: boolean = false;
 
     private async processQueue() {
         if (this.isProcessing || this.queue.length === 0) return;
         this.isProcessing = true;
-        const { func, args, resolve, reject } = this.queue[0];
+        const {
+            func, args, resolve, reject,
+        } = this.queue[0];
 
         try {
             const result = await func(...args);
@@ -29,7 +32,9 @@ export class AsyncQueue {
 
     async enqueue<T>(func: (...args: any[]) => Promise<T>, ...args: any[]): Promise<T> {
         return new Promise<T>((resolve, reject) => {
-            this.queue.push({ func, args, resolve, reject });
+            this.queue.push({
+                func, args, resolve, reject,
+            });
             this.processQueue();
         });
     }
@@ -43,4 +48,4 @@ export class AsyncQueue {
         // Remove all pending items
         this.queue = this.queue.slice(0, this.isProcessing ? 1 : 0);
     }
-} 
+}

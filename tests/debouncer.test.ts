@@ -1,5 +1,6 @@
 import { Debouncer } from "../src/utils/debouncer";
 import { AbortedError } from "../src/types";
+
 describe("Debouncer", () => {
     jest.useFakeTimers();
 
@@ -43,4 +44,4 @@ describe("Debouncer", () => {
         await expect(promise).rejects.toThrow(AbortedError);
         expect(mockFn).not.toHaveBeenCalled();
     });
-}); 
+});

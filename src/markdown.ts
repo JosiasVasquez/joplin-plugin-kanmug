@@ -6,24 +6,24 @@ import { BoardState, NoteData } from "./types";
  * @see https://joplinapp.org/markdown/#tables
  */
 export function getMdTable(boardState: BoardState): string {
-  if (!boardState.columns) return "";
+    if (!boardState.columns) return "";
 
-  const separator = "---";
-  const colNames = boardState.columns.map((col) => col.name);
+    const separator = "---";
+    const colNames = boardState.columns.map((col) => col.name);
 
-  const header = colNames.join(" | ") + "\n";
-  const headerSep = colNames.map(() => separator).join(" | ") + "\n";
+    const header = `${colNames.join(" | ")}\n`;
+    const headerSep = `${colNames.map(() => separator).join(" | ")}\n`;
 
-  const rows: string[][] = [];
-  const numRows = Math.max(...boardState.columns.map((c) => c.notes.length));
-  for (let i = 0; i < numRows; i++) {
-    rows[i] = boardState.columns.map((col) => getMdLink(col.notes[i]));
-  }
+    const rows: string[][] = [];
+    const numRows = Math.max(...boardState.columns.map((c) => c.notes.length));
+    for (let i = 0; i < numRows; i++) {
+        rows[i] = boardState.columns.map((col) => getMdLink(col.notes[i]));
+    }
 
-  const body = rows.map((r) => "| " + r.join(" | ") + " |").join("\n") + "\n";
-  const timestamp = `_Last updated at ${new Date().toLocaleString()} by Kanban plugin_`;
+    const body = `${rows.map((r) => `| ${r.join(" | ")} |`).join("\n")}\n`;
+    const timestamp = `_Last updated at ${new Date().toLocaleString()} by Kanban plugin_`;
 
-  return header + headerSep + body + timestamp;
+    return header + headerSep + body + timestamp;
 }
 
 /**
@@ -32,24 +32,23 @@ export function getMdTable(boardState: BoardState): string {
  * @see https://github.com/joplin/plugin-kanban/pull/19
  */
 export function getMdList(boardState: BoardState): string {
-  if (!boardState.columns) return "";
+    if (!boardState.columns) return "";
 
-  const numCols = boardState.columns.length;
-  const cols: string[] = [];
-  for (let i = 0; i < numCols; i++) {
-    cols[i] =
-      "## " +
-      boardState.columns[i].name +
-      "\n" +
-      boardState.columns[i].notes
-        .map((note) => "- " + getMdLink(note))
-        .join("\n");
-  }
+    const numCols = boardState.columns.length;
+    const cols: string[] = [];
+    for (let i = 0; i < numCols; i++) {
+        cols[i] = `## ${
+            boardState.columns[i].name
+        }\n${
+            boardState.columns[i].notes
+                .map((note) => `- ${getMdLink(note)}`)
+                .join("\n")}`;
+    }
 
-  const body = cols.join("\n\n");
-  const timestamp = `\n\n_Last updated at ${new Date().toLocaleString()} by Kanban plugin_`;
+    const body = cols.join("\n\n");
+    const timestamp = `\n\n_Last updated at ${new Date().toLocaleString()} by Kanban plugin_`;
 
-  return body + timestamp;
+    return body + timestamp;
 }
 
 /**
@@ -58,9 +57,9 @@ export function getMdList(boardState: BoardState): string {
  * @see https://github.com/joplin/plugin-kanban/pull/19
  */
 export function getMdLink(note: NoteData): string {
-  if (note?.title !== undefined && note?.id !== undefined) {
+    if (note?.title !== undefined && note?.id !== undefined) {
     // Escape pipe characters in the title
-    const escapedTitle = note.title.replace(/\|/g, '\\|');
-    return "[" + escapedTitle + "](:/" + note.id + ")";
-  } else return "";
+        const escapedTitle = note.title.replace(/\|/g, "\\|");
+        return `[${escapedTitle}](:/${note.id})`;
+    } return "";
 }

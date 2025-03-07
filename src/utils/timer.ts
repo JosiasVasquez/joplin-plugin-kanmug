@@ -1,6 +1,6 @@
-const DEFAULT_TIMEOUT = 3000;
+const DefaultTimeout = 3000;
 
-const DEFAULT_INTERVAL = 100;
+const DefaultInterval = 100;
 
 export async function sleep(ms: number) {
     await new Promise((resolve) => {
@@ -10,8 +10,8 @@ export async function sleep(ms: number) {
 
 export async function tryWaitUntilTimeout(
     condition: () => Promise<boolean>,
-    timeout: number = DEFAULT_TIMEOUT,
-    interval: number = DEFAULT_INTERVAL,
+    timeout: number = DefaultTimeout,
+    interval: number = DefaultInterval,
 ) {
     const start = Date.now();
     while (!await condition()) {

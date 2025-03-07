@@ -1,13 +1,13 @@
-import { AsyncQueue } from '../src/utils/asyncQueue';
-import { AbortedError } from '../src/types';
+import { AsyncQueue } from "../src/utils/asyncQueue";
+import { AbortedError } from "../src/types";
 
-describe('AsyncQueue', () => {
+describe("AsyncQueue", () => {
     jest.useFakeTimers();
 
-    it('should process multiple calls in sequence', async () => {
+    it("should process multiple calls in sequence", async () => {
         const queue = new AsyncQueue();
         const results: number[] = [];
-        const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+        const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
         // Create async functions that resolve after different delays
         const func1 = jest.fn().mockImplementation(async () => {
@@ -55,19 +55,19 @@ describe('AsyncQueue', () => {
         expect(func3).toHaveBeenCalledTimes(1);
     });
 
-    it('should handle function errors', async () => {
+    it("should handle function errors", async () => {
         const queue = new AsyncQueue();
-        const error = new Error('Test error');
+        const error = new Error("Test error");
         const mockFn = jest.fn().mockRejectedValue(error);
 
         const promise = queue.enqueue(mockFn);
         await expect(promise).rejects.toThrow(error);
     });
 
-    it('should abort pending calls', async () => {
+    it("should abort pending calls", async () => {
         const queue = new AsyncQueue();
-        const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-        
+        const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
         const func1 = jest.fn().mockImplementation(async () => {
             await delay(100);
             return 1;
@@ -103,4 +103,4 @@ describe('AsyncQueue', () => {
         expect(func1).toHaveBeenCalledTimes(1);
         expect(func2).not.toHaveBeenCalled();
     });
-}); 
+});

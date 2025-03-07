@@ -8,10 +8,8 @@ export const useDebouncer = (debounceTime: number) => {
         debouncerRef.current = new Debouncer(debounceTime);
     }
 
-    React.useEffect(() => {
-        return () => {
-            debouncerRef.current?.abort();
-        };
+    React.useEffect(() => () => {
+        debouncerRef.current?.abort();
     }, []);
 
     return debouncerRef.current;
@@ -24,9 +22,7 @@ export function useDebouncedFunc<T>(
     const debouncer = useDebouncer(debounceTime);
 
     const debouncedFunc = React.useCallback(
-        async (...args: any[]) => {
-            return debouncer.debounce(func, ...args);
-        },
+        async (...args: any[]) => debouncer.debounce(func, ...args),
         [debouncer, func],
     );
 

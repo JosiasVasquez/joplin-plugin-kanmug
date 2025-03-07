@@ -1,9 +1,10 @@
 import ejs from "ejs";
-import {DateTime as LuxonDateTime} from "luxon";
+import { DateTime as LuxonDateTime } from "luxon";
 import ms from "ms";
 
 class DateTime {
     date: LuxonDateTime;
+
     private _format: string;
 
     constructor() {
@@ -28,6 +29,7 @@ class DateTime {
 
 export class TemplateRenderer {
     private template: string;
+
     private data: object;
 
     constructor(template: string, data?: object) {
@@ -43,8 +45,8 @@ export class TemplateRenderer {
         try {
             const compiledTemplate = ejs.compile(this.template, this.data);
             return compiledTemplate({
-                today: () => this.today()
-            });    
+                today: () => this.today(),
+            });
         } catch (error) {
             if (error instanceof Error) {
                 return error.toString();

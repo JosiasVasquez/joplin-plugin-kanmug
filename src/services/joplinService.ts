@@ -1,29 +1,33 @@
-import joplin from 'api';
-import { tryWaitUntilTimeout } from '../utils/timer';
-import { NoteData, NoteDataMonad } from '../types';
+import joplin from "api";
+import { tryWaitUntilTimeout } from "../utils/timer";
+import { NoteData, NoteDataMonad } from "../types";
 
 type NoteChangeListener = (noteId: string) => Promise<boolean>;
 
-const DEFAULT_TIMEOUT = 500;
+const DefaultTimeout = 500;
 
 export class JoplinService {
     onNoteChangeListeners: NoteChangeListener[] = [];
+
     onNoteSelectionChangeListeners: NoteChangeListener[] = [];
+
     toastCounter = 0;
 
     start() {
         joplin.workspace.onNoteChange(async ({ id }) => {
             this.onNoteChangeListeners = (await Promise.all(
-              this.onNoteChangeListeners.map(listener => listener(id))
-            )).map((keep, i) => keep ? this.onNoteChangeListeners[i] : null)
-            .filter((listener) => listener !== null) as NoteChangeListener[];
+                this.onNoteChangeListeners.map((listener) => listener(id)),
+            )).map((keep, i) => (keep ? this.onNoteChangeListeners[i] : null))
+                .filter((listener) => listener !== null) as NoteChangeListener[];
         });
 
         joplin.workspace.onNoteSelectionChange(async ({ value } : {value: [string?]}) => {
             this.onNoteSelectionChangeListeners = (await Promise.all(
-              this.onNoteSelectionChangeListeners.map(listener => listener(value?.[0] as string))
-            )).map((keep, i) => keep ? this.onNoteSelectionChangeListeners[i] : null)
-            .filter((listener) => listener !== null) as NoteChangeListener[];
+                this.onNoteSelectionChangeListeners.map(
+                    (listener) => listener(value?.[0] as string),
+                ),
+            )).map((keep, i) => (keep ? this.onNoteSelectionChangeListeners[i] : null))
+                .filter((listener) => listener !== null) as NoteChangeListener[];
         });
     }
 
@@ -35,19 +39,18 @@ export class JoplinService {
     async createUntitledNote(): Promise<string> {
         const selectedNote = await joplin.workspace.selectedNote();
         joplin.commands.execute("newNote");
-        return await new Promise(resolve => {
+        return new Promise((resolve) => {
             let isResolved = false;
             const func = async (id: string) => {
                 if (isResolved) {
                     return false;
-                } else if (id !== selectedNote.id) {
+                } if (id !== selectedNote.id) {
                     isResolved = true;
                     resolve(id);
                     return false;
-                } else {
-                    return true;
                 }
-            }
+                return true;
+            };
 
             this.onNoteChange(func);
             this.onNoteSelectionChange(func);
@@ -58,7 +61,8 @@ export class JoplinService {
         const note = await joplin.data.get(["notes", noteId]);
         const tags = await joplin.data.get(["notes", noteId, "tags"]);
         const noteData = NoteDataMonad.fromJoplinNote(
-            note).setTagsFromJoplinTagList(tags.items).data;
+            note,
+        ).setTagsFromJoplinTagList(tags.items).data;
         return noteData;
     }
 
@@ -77,7 +81,7 @@ export class JoplinService {
         this.onNoteSelectionChangeListeners.push(listener);
     }
 
-    async waitUntilNoteAvailable(noteId: string, timeout: number = DEFAULT_TIMEOUT) {
+    async waitUntilNoteAvailable(noteId: string, timeout: number = DefaultTimeout) {
         try {
             const promise = new Promise((resolve) => {
                 tryWaitUntilTimeout(async () => {
@@ -86,24 +90,27 @@ export class JoplinService {
                     if (note.items.length > 0) {
                         resolve(note.items[0]);
                         return true;
-                    } else {
-                        return false;
                     }
-                }, timeout);           
+                    return false;
+                }, timeout);
             });
             return await promise;
-        } catch (e) {
+        } catch {
             return null;
         }
     }
 
-    async toast(message: string,
+    async toast(
+        message: string,
         type: "success" | "error" = "success",
-        duration: number = 3000, 
-      ) {
+        duration: number = 3000,
+    ) {
         await (joplin.views.dialogs as any).showToast(
-          {message, 
-            duration: duration + (this.toastCounter++ % 50), 
-            type});
+            {
+                message,
+                duration: duration + (this.toastCounter++ % 50),
+                type,
+            },
+        );
     }
 }
