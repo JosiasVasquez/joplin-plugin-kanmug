@@ -410,7 +410,6 @@ export class KanbanApp {
     async handleNewlyOpenedNote(newNoteId: string) {
         if (this.openBoard) {
             if (this.openBoard.configNoteId === newNoteId) return;
-            if (await this.openBoard.isNoteIdOnBoard(newNoteId)) return;
 
             const originalOpenBoard = this.openBoard;
             await this.reloadConfig(newNoteId);
