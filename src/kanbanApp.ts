@@ -1,6 +1,6 @@
 import joplin from "api";
 import * as yaml from "js-yaml";
-import { Action, InsertNoteToColumnAction } from "./actions";
+import { Action, InsertNoteToColumnAction, OpenNoteAction } from "./actions";
 import Board from "./board";
 import { BoardState, Config, NoteDataMonad } from "./types";
 import { RecentKanbanStore } from "./recentKanbanStore";
@@ -68,7 +68,7 @@ export class KanbanApp {
      * Try loading a config from noteId. If succesful, replace the current board,
      * if not destroy it (because we are assuming the config became invalid).
      */
-    async reloadConfig(noteId: string): Promise<boolean> {
+    async loadConfig(noteId: string): Promise<boolean> {
         const note = await getConfigNote(noteId);
         const board = noteId === this.openBoard?.configNoteId
             ? this.openBoard
@@ -99,6 +99,15 @@ export class KanbanApp {
                 console.error("Error refreshing UI", e);
             }
         });
+    }
+
+    async loadKanban(noteId: string): Promise<boolean> {
+        const originalOpenBoard = this.openBoard;
+        const res = await this.loadConfig(noteId);
+        if (res && this.openBoard && this.openBoard.isValid && originalOpenBoard !== this.openBoard) {
+            this.refreshUI();
+        }
+        return res;
     }
 
     /**
@@ -215,15 +224,14 @@ export class KanbanApp {
             return;
         }
         case "openNote": {
-            await this.joplinService.openNote(msg.payload.noteId);
-            return;
+            return this.handleOpenNote(msg);
         }
         case "openKanbanConfigNote": {
             await this.joplinService.openNote(this.openBoard.configNoteId);
             return;
         }
         case "openKanban": {
-            await this.reloadConfig(msg.payload.noteId);
+            await this.loadConfig(msg.payload.noteId);
             this.refreshUI();
             return;
         }
@@ -238,7 +246,7 @@ export class KanbanApp {
             }
 
             try {
-                const valid = await this.reloadConfig(parsedLink.noteId ?? "");
+                const valid = await this.loadConfig(parsedLink.noteId ?? "");
                 if (valid) {
                     this.refreshUI();
                 } else {
@@ -255,6 +263,18 @@ export class KanbanApp {
         );
     }
 
+    async handleOpenNote(msg: OpenNoteAction) {
+        if (this.openBoard && this.openBoard.configNoteId === msg.payload.noteId) {
+            this.joplinService.openNote(msg.payload.noteId);
+            return;
+        }
+        const res = await this.loadKanban(msg.payload.noteId);
+        if (res) {
+            return;
+        }
+        this.joplinService.openNote(msg.payload.noteId);
+    }
+
     async handleQueuedKanbanMessage(msg: Action) {
         if (!this.openBoard) return this.handleNoOpenedBoard();
 
@@ -266,7 +286,7 @@ export class KanbanApp {
             const newConf = await this.showConfigUI(target);
             if (newConf) {
                 await setConfigNote(this.openBoard.configNoteId, newConf);
-                await this.reloadConfig(this.openBoard.configNoteId);
+                await this.loadConfig(this.openBoard.configNoteId);
             }
             break;
         }
@@ -291,7 +311,7 @@ export class KanbanApp {
                 ],
             };
             await setConfigNote(this.openBoard.configNoteId, yaml.dump(newConf));
-            await this.reloadConfig(this.openBoard.configNoteId);
+            await this.loadConfig(this.openBoard.configNoteId);
             break;
         }
 
@@ -299,7 +319,7 @@ export class KanbanApp {
             const newConf = await this.showConfigUI("columnnew");
             if (newConf) {
                 await setConfigNote(this.openBoard.configNoteId, newConf);
-                await this.reloadConfig(this.openBoard.configNoteId);
+                await this.loadConfig(this.openBoard.configNoteId);
             }
             break;
         }
@@ -307,7 +327,7 @@ export class KanbanApp {
         case "messageAction": {
             const { messageId, actionName } = msg.payload;
             if (messageId === "reload" && actionName === "reload") {
-                await this.reloadConfig(this.openBoard.configNoteId);
+                await this.loadConfig(this.openBoard.configNoteId);
             }
             // New message action add here
             break;
@@ -410,17 +430,12 @@ export class KanbanApp {
     async handleNewlyOpenedNote(newNoteId: string) {
         if (this.openBoard) {
             if (this.openBoard.configNoteId === newNoteId) return;
-
-            const originalOpenBoard = this.openBoard;
-            await this.reloadConfig(newNoteId);
-            if (this.openBoard && this.openBoard.isValid && originalOpenBoard !== this.openBoard) {
-                this.refreshUI();
-            }
+            await this.loadKanban(newNoteId);
             return;
         }
 
         if (!this.openBoard || (this.openBoard as Board).configNoteId !== newNoteId) {
-            await this.reloadConfig(newNoteId);
+            await this.loadConfig(newNoteId);
             if (this.openBoard) {
                 await this.showBoard();
 
