@@ -1,6 +1,5 @@
 import React, { useContext } from "react";
 import styled from "styled-components";
-import { IoMdAdd } from "react-icons/io";
 
 import type { NoteData } from "../types";
 import { DispatchContext } from "./index";
@@ -8,11 +7,9 @@ import ContextMenu from "./ContextMenu";
 import DraggableCard from "./DraggableCard";
 import { useDroppableArea } from "./DragDrop";
 import { useDebouncedFunc } from "../hooks/debouncer";
-import { useRefState } from "./hooks";
-import { MainContext } from "./MainContext";
+import { ColumnHeader } from "./ColumnHeader";
 
 const dragEventDebounceTime = 100;
-const clickEventThrottleTime = 500;
 
 type Props = {
   name: string;
@@ -86,48 +83,10 @@ export default function ({ name, link, notes }: Props) {
         }
     };
 
-    const [isNewNoteDisabled, setIsNewNoteDisabled] = useRefState(false);
-
-    const handleNewNote = () => {
-        if (isNewNoteDisabled.current) return;
-
-        setIsNewNoteDisabled(true);
-        setTimeout(() => setIsNewNoteDisabled(false), clickEventThrottleTime);
-
-        dispatch({
-            type: "newNote",
-            payload: {
-                colName: name,
-            },
-        });
-    };
-
-    const { send } = useContext(MainContext);
-
-    const handleTitleClick = React.useCallback(() => {
-        if (link) {
-            send({
-                type: "columnTitleClicked",
-                payload: { link },
-            });
-        }
-    }, [name, link, send]);
-
     return (
         <Column>
             <ContextMenu options={["Edit", "Delete"]} onSelect={handleMenu}>
-                <ColumnHeader>
-                    {link ? (
-                        <ColumnTitle onClick={handleTitleClick}>
-                            {name}
-                        </ColumnTitle>
-                    ) : (
-                        <span>{name}</span>
-                    )}
-                    <AddIconCont onClick={handleNewNote}>
-                        <IoMdAdd />
-                    </AddIconCont>
-                </ColumnHeader>
+                <ColumnHeader name={name} link={link}/>
             </ContextMenu>
             <DroppableAreaContainer
                 onDragOver={handleDragOver}
@@ -161,33 +120,6 @@ const Column = styled("div")({
     },
 });
 
-const ColumnHeader = styled("div")({
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    fontSize: "1.1rem",
-    fontWeight: "bold",
-    marginBottom: "20px",
-    userSelect: "none",
-});
-
-const AddIconCont = styled("span")({
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    marginLeft: "auto",
-    borderRadius: "5px",
-
-    "&:hover": {
-        backgroundColor: "var(--joplin-background-color-hover3)",
-    },
-    "& > svg": {
-        width: "1.5em",
-        height: "1.5em",
-        color: "var(--joplin-color3)",
-    },
-});
-
 const DroppableAreaContainer = styled("div")<{ draggingOver: boolean }>(
     ({ draggingOver }) => ({
         minHeight: "200px",
@@ -209,13 +141,3 @@ const DroppableArea = styled("div")<{ isVisible?: boolean }>(
         pointerEvents: isVisible ? "auto" : "none",
     }),
 );
-
-const ColumnTitle = styled("div")({
-    cursor: "pointer",
-    "&:hover": {
-        opacity: 0.7,
-    },
-    "&:active": {
-        opacity: 0.5,
-    },
-});
