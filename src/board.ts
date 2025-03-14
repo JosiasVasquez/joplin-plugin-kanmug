@@ -1,5 +1,3 @@
-import ms from "ms";
-import ejs from "ejs";
 import { getNotebookPath, getNoteById } from "./noteData";
 import rules from "./rules";
 import { parseConfigNote } from "./parser";

@@ -1,4 +1,5 @@
-import ejs from "ejs";
+// @ts-ignore
+import ejs from "ejs/ejs.min.js";
 import { DateTime as LuxonDateTime } from "luxon";
 import ms from "ms";
 
