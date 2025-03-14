@@ -35,7 +35,8 @@ export class RecentKanbanStore {
                         bookmarked: kanban.bookmarked ?? false,
                     }));
                 }
-            } catch {
+            } catch (e) {
+                console.error(e);
                 this.kanbans = [];
             }
         }

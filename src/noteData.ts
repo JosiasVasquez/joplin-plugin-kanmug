@@ -127,14 +127,11 @@ export async function setConfigNote(
     noteId: string,
     config: string | null = null,
     after: string | null = null,
-) {
+): Promise<string> {
     const { body: oldBody } = await getConfigNote(noteId);
     const newBody = getUpdatedConfigNote(oldBody, config, after);
-    const { id: selectedNoteId } = await joplin.workspace.selectedNote();
-    if (selectedNoteId === noteId) {
-        await joplin.commands.execute("editor.setText", newBody);
-    }
     await joplin.data.put(["notes", noteId], null, { body: newBody });
+    return newBody;
 }
 
 /**

@@ -285,7 +285,7 @@ export class KanbanApp {
             const { target } = msg.payload;
             const newConf = await this.showConfigUI(target);
             if (newConf) {
-                await setConfigNote(this.openBoard.configNoteId, newConf);
+                await this.saveKanbanToNote(newConf);
                 await this.loadConfig(this.openBoard.configNoteId);
             }
             break;
@@ -310,7 +310,7 @@ export class KanbanApp {
                     ...this.openBoard.parsedConfig.columns.slice(colIdx + 1),
                 ],
             };
-            await setConfigNote(this.openBoard.configNoteId, yaml.dump(newConf));
+            await this.saveKanbanToNote(yaml.dump(newConf));
             await this.loadConfig(this.openBoard.configNoteId);
             break;
         }
@@ -318,7 +318,7 @@ export class KanbanApp {
         case "addColumn": {
             const newConf = await this.showConfigUI("columnnew");
             if (newConf) {
-                await setConfigNote(this.openBoard.configNoteId, newConf);
+                await this.saveKanbanToNote(newConf);
                 await this.loadConfig(this.openBoard.configNoteId);
             }
             break;
@@ -408,12 +408,12 @@ export class KanbanApp {
             if (
                 this.openBoard.isValid
         && this.openBoard.parsedConfig?.display?.markdown == "list"
-            ) setConfigNote(this.openBoard.configNoteId, null, getMdList(newState));
+            ) await this.saveKanbanToNote(null, getMdList(newState));
             else if (
                 this.openBoard.isValid
         && (this.openBoard.parsedConfig?.display?.markdown == "table"
           || this.openBoard.parsedConfig?.display?.markdown == undefined)
-            ) setConfigNote(this.openBoard.configNoteId, null, getMdTable(newState));
+            ) await this.saveKanbanToNote(null, getMdTable(newState));
         }
 
         if (showReloadedToast) {
@@ -481,5 +481,19 @@ export class KanbanApp {
     async removeRecentKanban(noteId: string) {
         this.recentKanbanStore.removeKanban(noteId);
         await this.recentKanbanStore.save();
+    }
+
+    async saveKanbanToNote(
+        config: string | null = null,
+        after: string | null = null,
+    ) {
+        if (!this.openBoard) return;
+        const noteId = this.openBoard.configNoteId;
+        const newBody = await setConfigNote(noteId, config, after);
+
+        const { id: selectedNoteId } = await joplin.workspace.selectedNote();
+        if (selectedNoteId === noteId) {
+            await joplin.commands.execute("editor.setText", newBody);
+        }    
     }
 }
