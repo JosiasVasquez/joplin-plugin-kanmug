@@ -27,7 +27,7 @@ function AddRuleBtn({
         { value: "", label: "Add a new rule" },
         ...rules.map((r) => ({ value: r, label: capitalize(r) })),
     ];
-
+    // @ts-ignore
     const handleChange: Select["onChange"] = (ev) => {
         if (ev && ev.value !== "") {
             if (ev.value === "backlog") {
