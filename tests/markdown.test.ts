@@ -71,6 +71,25 @@ describe("MarkdownFormatter", () => {
             const result = formatter.getMdTable({} as BoardState);
             expect(result).toBe("");
         });
+
+        it("should create title with link", () => {
+            const boardState = {
+                ...sampleBoardState,
+                name: "Test Board with link",
+                columns: [
+                    {
+                        name: "Test",
+                        link: "joplin://x-callback-url/openNote?id=8587ba38240578b2b68a71fbec6aee4e",
+                        notes: [],
+                    },
+                ],
+            };
+            const result = formatter.getMdTable(boardState);
+            expect(result).toBe("[Test](:/8587ba38240578b2b68a71fbec6aee4e)\n"
+                + "---\n"
+                + "\n"
+                + "_Last updated at 2025-01-01 12:00:00 by Kanban plugin_");
+        });
     });
 
     describe("getMdList", () => {
@@ -93,6 +112,23 @@ describe("MarkdownFormatter", () => {
         it("should return empty string for board state without columns", () => {
             const result = formatter.getMdList({} as BoardState);
             expect(result).toBe("");
+        });
+
+        it("should create title with link", () => {
+            const boardState = {
+                ...sampleBoardState,
+                name: "Test Board with link",
+                columns: [
+                    {
+                        name: "Test",
+                        link: "joplin://x-callback-url/openNote?id=8587ba38240578b2b68a71fbec6aee4e",
+                        notes: [],
+                    },
+                ],
+            };
+            const result = formatter.getMdList(boardState);
+            expect(result).toBe("## [Test](:/8587ba38240578b2b68a71fbec6aee4e)\n\n\n"
+                + "_Last updated at 2025-01-01 12:00:00 by Kanban plugin_");
         });
     });
 });

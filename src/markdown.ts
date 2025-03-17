@@ -1,9 +1,24 @@
 import { BoardState, NoteData } from "./types";
+import { LinkParser, LinkType } from "./utils/linkParser";
 
 /**
  * Class for formatting board data as markdown in different formats.
  */
 export class MarkdownFormatter {
+    linkParser = new LinkParser();
+
+    normalizeColumnTitle(title: string, link?: string): string {
+        if (link) {
+            const parsedLink = this.linkParser.parse(link);
+            if (parsedLink.type === LinkType.NoteLink) {
+                return `[${title}](:/${parsedLink.noteId})`;
+            }
+
+            return `[${title}](${link})`;
+        }
+        return title;
+    }
+
     /**
      * Get a markdown table representation of the board as a string.
      *
@@ -13,7 +28,7 @@ export class MarkdownFormatter {
         if (!boardState.columns) return "";
 
         const separator = "---";
-        const colNames = boardState.columns.map((col) => col.name);
+        const colNames = boardState.columns.map((col) => this.normalizeColumnTitle(col.name, col.link));
 
         const header = `${colNames.join(" | ")}\n`;
         const headerSep = `${colNames.map(() => separator).join(" | ")}\n`;
@@ -42,7 +57,7 @@ export class MarkdownFormatter {
         const cols: string[] = [];
         for (let i = 0; i < numCols; i++) {
             cols[i] = `## ${
-                boardState.columns[i].name
+                this.normalizeColumnTitle(boardState.columns[i].name, boardState.columns[i].link)
             }\n${
                 boardState.columns[i].notes
                     .map((note) => `- ${this.getMdLink(note)}`)
