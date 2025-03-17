@@ -1,4 +1,4 @@
-// @ts-ignore
+// @ts-expect-error
 import ejs from "ejs/ejs.min.js";
 import { DateTime as LuxonDateTime } from "luxon";
 import ms from "ms";

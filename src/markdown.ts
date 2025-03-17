@@ -1,65 +1,71 @@
 import { BoardState, NoteData } from "./types";
 
 /**
- * Get a markdown table representation of the board as a string.
- *
- * @see https://joplinapp.org/markdown/#tables
+ * Class for formatting board data as markdown in different formats.
  */
-export function getMdTable(boardState: BoardState): string {
-    if (!boardState.columns) return "";
+export class MarkdownFormatter {
+    /**
+     * Get a markdown table representation of the board as a string.
+     *
+     * @see https://joplinapp.org/markdown/#tables
+     */
+    getMdTable(boardState: BoardState): string {
+        if (!boardState.columns) return "";
 
-    const separator = "---";
-    const colNames = boardState.columns.map((col) => col.name);
+        const separator = "---";
+        const colNames = boardState.columns.map((col) => col.name);
 
-    const header = `${colNames.join(" | ")}\n`;
-    const headerSep = `${colNames.map(() => separator).join(" | ")}\n`;
+        const header = `${colNames.join(" | ")}\n`;
+        const headerSep = `${colNames.map(() => separator).join(" | ")}\n`;
 
-    const rows: string[][] = [];
-    const numRows = Math.max(...boardState.columns.map((c) => c.notes.length));
-    for (let i = 0; i < numRows; i++) {
-        rows[i] = boardState.columns.map((col) => getMdLink(col.notes[i]));
+        const rows: string[][] = [];
+        const numRows = Math.max(...boardState.columns.map((c) => c.notes.length));
+        for (let i = 0; i < numRows; i++) {
+            rows[i] = boardState.columns.map((col) => this.getMdLink(col.notes[i]));
+        }
+
+        const body = `${rows.map((r) => `| ${r.join(" | ")} |`).join("\n")}\n`;
+        const timestamp = `_Last updated at ${new Date().toLocaleString()} by Kanban plugin_`;
+
+        return header + headerSep + body + timestamp;
     }
 
-    const body = `${rows.map((r) => `| ${r.join(" | ")} |`).join("\n")}\n`;
-    const timestamp = `_Last updated at ${new Date().toLocaleString()} by Kanban plugin_`;
+    /**
+     * Get a markdown list representation of the board as a string.
+     *
+     * @see https://github.com/joplin/plugin-kanban/pull/19
+     */
+    getMdList(boardState: BoardState): string {
+        if (!boardState.columns) return "";
 
-    return header + headerSep + body + timestamp;
-}
+        const numCols = boardState.columns.length;
+        const cols: string[] = [];
+        for (let i = 0; i < numCols; i++) {
+            cols[i] = `## ${
+                boardState.columns[i].name
+            }\n${
+                boardState.columns[i].notes
+                    .map((note) => `- ${this.getMdLink(note)}`)
+                    .join("\n")}`;
+        }
 
-/**
- * Get a markdown list representation of the board as a string.
- *
- * @see https://github.com/joplin/plugin-kanban/pull/19
- */
-export function getMdList(boardState: BoardState): string {
-    if (!boardState.columns) return "";
+        const body = cols.join("\n\n");
+        const timestamp = `\n\n_Last updated at ${new Date().toLocaleString()} by Kanban plugin_`;
 
-    const numCols = boardState.columns.length;
-    const cols: string[] = [];
-    for (let i = 0; i < numCols; i++) {
-        cols[i] = `## ${
-            boardState.columns[i].name
-        }\n${
-            boardState.columns[i].notes
-                .map((note) => `- ${getMdLink(note)}`)
-                .join("\n")}`;
+        return body + timestamp;
     }
 
-    const body = cols.join("\n\n");
-    const timestamp = `\n\n_Last updated at ${new Date().toLocaleString()} by Kanban plugin_`;
-
-    return body + timestamp;
-}
-
-/**
- * Get a markdown link to the given note as a string.
- *
- * @see https://github.com/joplin/plugin-kanban/pull/19
- */
-export function getMdLink(note: NoteData): string {
-    if (note?.title !== undefined && note?.id !== undefined) {
-    // Escape pipe characters in the title
-        const escapedTitle = note.title.replace(/\|/g, "\\|");
-        return `[${escapedTitle}](:/${note.id})`;
-    } return "";
+    /**
+     * Get a markdown link to the given note as a string.
+     *
+     * @see https://github.com/joplin/plugin-kanban/pull/19
+     */
+    getMdLink(note: NoteData): string {
+        if (note?.title !== undefined && note?.id !== undefined) {
+            // Escape pipe characters in the title
+            const escapedTitle = note.title.replace(/\|/g, "\\|");
+            return `[${escapedTitle}](:/${note.id})`;
+        }
+        return "";
+    }
 }

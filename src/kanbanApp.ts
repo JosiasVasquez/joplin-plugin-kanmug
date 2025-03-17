@@ -14,7 +14,7 @@ import { LinkParser, LinkType } from "./utils/linkParser";
 import { AsyncQueue } from "./utils/asyncQueue";
 import { ConfigUIData } from "./configui";
 import { getRuleEditorTypes } from "./rules";
-import { getMdList, getMdTable } from "./markdown";
+import { MarkdownFormatter } from "./markdown";
 
 const REFRESH_UI_DEBOUNCE_MS = 100;
 
@@ -34,6 +34,8 @@ export class KanbanApp {
     kanbanMessageQueue: AsyncQueue = new AsyncQueue();
 
     dialogView: string | null = null;
+
+    markdownFormatter: MarkdownFormatter = new MarkdownFormatter();
 
     constructor(joplinService: JoplinService) {
         this.openBoard = undefined;
@@ -408,12 +410,12 @@ export class KanbanApp {
             if (
                 this.openBoard.isValid
         && this.openBoard.parsedConfig?.display?.markdown == "list"
-            ) await this.saveKanbanToNote(null, getMdList(newState));
+            ) await this.saveKanbanToNote(null, this.markdownFormatter.getMdList(newState));
             else if (
                 this.openBoard.isValid
         && (this.openBoard.parsedConfig?.display?.markdown == "table"
           || this.openBoard.parsedConfig?.display?.markdown == undefined)
-            ) await this.saveKanbanToNote(null, getMdTable(newState));
+            ) await this.saveKanbanToNote(null, this.markdownFormatter.getMdTable(newState));
         }
 
         if (showReloadedToast) {
@@ -494,6 +496,6 @@ export class KanbanApp {
         const { id: selectedNoteId } = await joplin.workspace.selectedNote();
         if (selectedNoteId === noteId) {
             await joplin.commands.execute("editor.setText", newBody);
-        }    
+        }
     }
 }

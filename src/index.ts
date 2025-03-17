@@ -1,28 +1,10 @@
 import joplin from "api";
-import * as yaml from "js-yaml";
 
 import { SettingItemType } from "api/types";
-import Board from "./board";
-import { getYamlConfig, parseConfigNote } from "./parser";
-import {
-    getConfigNote,
-    setConfigNote,
-    executeUpdateQuery,
-    getAllTags,
-    getAllNotebooks,
-    searchNotes,
-} from "./noteData";
-import { getRuleEditorTypes } from "./rules";
-import { getMdList, getMdTable } from "./markdown";
 
-import type { Action, InsertNoteToColumnAction } from "./actions";
-import type { ConfigUIData } from "./configui";
-import {
-    type Config, type BoardState, NoteData, NoteDataMonad,
-} from "./types";
+import type { Action } from "./actions";
 import { JoplinService } from "./services/joplinService";
-import { AsyncQueue } from "./utils/asyncQueue";
-import { RECENT_KANBANS_STORAGE_KEY, RecentKanbanStore } from "./recentKanbanStore";
+import { RECENT_KANBANS_STORAGE_KEY } from "./recentKanbanStore";
 import { KanbanApp } from "./kanbanApp";
 
 const joplinService = new JoplinService();
