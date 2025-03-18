@@ -66,6 +66,10 @@ export class JoplinService {
         return noteData;
     }
 
+    openItem(item: string) {
+        joplin.commands.execute("openItem", item);
+    }
+
     openNote(noteId: string) {
         // The "openNote" command can not open a note
         // where its parent_id is ""

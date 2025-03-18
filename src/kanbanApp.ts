@@ -242,6 +242,11 @@ export class KanbanApp {
             const { link } = msg.payload;
             const parsedLink = this.linkParser.parse(link);
 
+            if (parsedLink.type === LinkType.HyperLink) {
+                this.joplinService.openItem(link);
+                break;
+            }
+
             if (parsedLink.type !== LinkType.NoteLink) {
                 this.joplinService.toast("Invalid column link", "error");
                 break;
