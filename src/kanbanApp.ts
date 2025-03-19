@@ -273,7 +273,13 @@ export class KanbanApp {
         }
         }
         return this.kanbanMessageQueue.enqueue(async () => this.handleQueuedKanbanMessage(msg)).catch(
-            () => {},
+            (e) => {
+                if (e instanceof Error && e.name === "AbortedError") {
+                    // Ignore aborted errors
+                } else {
+                    console.error("Error handling queued kanban message", e);
+                }
+            },
         );
     }
 
@@ -505,8 +511,8 @@ export class KanbanApp {
         const noteId = this.openBoard.configNoteId;
         const newBody = await setConfigNote(noteId, config, after);
 
-        const { id: selectedNoteId } = await joplin.workspace.selectedNote();
-        if (selectedNoteId === noteId) {
+        const selectedNote = await joplin.workspace.selectedNote();
+        if (selectedNote?.id === noteId) {
             await joplin.commands.execute("editor.setText", newBody);
         }
     }

@@ -102,12 +102,16 @@ function Content(props: { board?: BoardState }) {
 
     React.useEffect(() => {
         webviewApi.onMessage((payload) => {
-            const { message } = payload;
-            if (message.type === "refresh") {
-                dispatch({ type: "poll" });
-            } else if (message.type === "showRecentKanban") {
-                setKanbans(message.payload.recentKanbans);
-                recentKanbanHandle.open();
+            try {
+                const { message } = payload;
+                if (message.type === "refresh") {
+                    dispatch({ type: "poll" });
+                } else if (message.type === "showRecentKanban") {
+                    setKanbans(message.payload.recentKanbans);
+                    recentKanbanHandle.open();
+                }
+            } catch (e) {
+                console.error("Error handling message", e);
             }
         });
     // eslint-disable-next-line react-hooks/exhaustive-deps
