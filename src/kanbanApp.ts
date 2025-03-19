@@ -37,6 +37,8 @@ export class KanbanApp {
 
     markdownFormatter: MarkdownFormatter = new MarkdownFormatter();
 
+    debug: boolean = false;
+
     constructor(joplinService: JoplinService) {
         this.openBoard = undefined;
         this.boardView = null;
@@ -90,7 +92,7 @@ export class KanbanApp {
     refreshUI() {
         this.refreshUIDebouncer.debounce(async () => {
             if (this.boardView) {
-                joplin.views.panels.postMessage(this.boardView, {
+                this.postMessageToPanel({
                     type: "refresh",
                 });
             }
@@ -191,31 +193,41 @@ export class KanbanApp {
     }
 
     /**
- * Handle messages coming from the webview.
- *
- * Almost all changes to the state occur in this method.
- */
+     * Handle messages coming from the webview.
+     *
+     * Almost all changes to the state occur in this method.
+     */
     async handleKanbanMessage(msg: Action) {
-        if (msg.type === "close") {
+        if (this.debug) {
+            console.log("handleKanbanMessage", msg);
+        }
+
+        // For messages that work even if no board is opened
+        switch (msg.type) {
+        case "close": {
             // Allow to close the panel but no kanban is opened
             return this.handleCloseMessage(msg);
         }
+        case "requestToShowRecentKanban": {
+            this.postMessageToPanel({
+                type: "showRecentKanban",
+                payload: {
+                    recentKanbans: this.getRecentKanbans(),
+                },
+            });
+            return;
+        }
+        case "openKanban": {
+            await this.loadConfig(msg.payload.noteId);
+            this.refreshUI();
+            return;
+        }
+        }
+
         if (!this.openBoard) return this.handleNoOpenedBoard();
 
         switch (msg.type) {
         // Those actions do not update state, so it can return immediately
-        case "requestToShowRecentKanban": {
-            if (this.boardView) {
-                joplin.views.panels.postMessage(this.boardView, {
-                    type: "showRecentKanban",
-                    payload: {
-                        recentKanbans: this.getRecentKanbans(),
-                    },
-                });
-            }
-            return;
-        }
-
         case "requestToRemoveRecentKanbanItem": {
             await this.removeRecentKanban(msg.payload.noteId);
             return;
@@ -229,12 +241,7 @@ export class KanbanApp {
             return this.handleOpenNote(msg);
         }
         case "openKanbanConfigNote": {
-            await this.joplinService.openNote(this.openBoard.configNoteId);
-            return;
-        }
-        case "openKanban": {
-            await this.loadConfig(msg.payload.noteId);
-            this.refreshUI();
+            this.joplinService.openNote(this.openBoard.configNoteId);
             return;
         }
 
@@ -501,6 +508,18 @@ export class KanbanApp {
         const { id: selectedNoteId } = await joplin.workspace.selectedNote();
         if (selectedNoteId === noteId) {
             await joplin.commands.execute("editor.setText", newBody);
+        }
+    }
+
+    postMessageToPanel(payload: any) {
+        if (this.debug) {
+            if (!this.boardView) {
+                console.log("No board view");
+            }
+            console.log("postMessageToPanel", payload);
+        }
+        if (this.boardView) {
+            joplin.views.panels.postMessage(this.boardView, payload);
         }
     }
 }
