@@ -132,8 +132,7 @@ export class BoardStateMonad {
         this.data = boardState;
     }
 
-    findNoteData(noteId: string): {
-      note: NoteData | undefined, column: BoardStateColumn | undefined} {
+    findNoteData(noteId: string): { note: NoteData | undefined; column: BoardStateColumn | undefined } {
         for (const column of this.data.columns ?? []) {
             const note = column.notes.find((n) => n.id === noteId);
             if (note) {

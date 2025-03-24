@@ -1,13 +1,17 @@
 import joplin from "api";
 import * as yaml from "js-yaml";
-import { Action, InsertNoteToColumnAction, OpenNoteAction } from "./actions";
+import {
+    Action, InsertNoteToColumnAction, NewNoteAction, OpenNoteAction,
+} from "./actions";
 import Board from "./board";
-import { BoardState, Config, NoteDataMonad } from "./types";
+import {
+    BoardState, Config, NoteData, NoteDataMonad, accessBoardState, BoardStateColumn,
+} from "./types";
 import { RecentKanbanStore } from "./recentKanbanStore";
 import { Debouncer } from "./utils/debouncer";
 import { JoplinService } from "./services/joplinService";
 import {
-    executeUpdateQuery, getAllNotebooks, getAllTags, getConfigNote, searchNotes, setConfigNote,
+    executeUpdateQuery, getAllNotebooks, getAllTags, getConfigNote, getNoteById, searchNotes, setConfigNote,
 } from "./noteData";
 import { getYamlConfig, parseConfigNote } from "./parser";
 import { LinkParser, LinkType } from "./utils/linkParser";
@@ -39,12 +43,15 @@ export class KanbanApp {
 
     debug: boolean = false;
 
+    cachedBoardState: BoardState | null = null;
+
     constructor(joplinService: JoplinService) {
         this.openBoard = undefined;
         this.boardView = null;
         this.recentKanbanStore = new RecentKanbanStore();
         this.joplinService = joplinService;
         this.kanbanMessageQueue = new AsyncQueue();
+        this.cachedBoardState = null;
     }
 
     async load() {
@@ -81,6 +88,7 @@ export class KanbanApp {
         const valid = ymlConfig !== null && (await board.loadConfig(ymlConfig));
         if (valid) {
             this.openBoard = board;
+            this.cachedBoardState = null;
             await this.prependRecentKanban(noteId, note.title);
             return true;
         }
@@ -175,10 +183,20 @@ export class KanbanApp {
 
     async updateBoardByAction(msg: Action) {
         if (!this.openBoard) return;
-        const allNotesOld = await searchNotes(this.openBoard.rootNotebookName, this.openBoard.baseTags);
-        const oldState: BoardState = this.openBoard.getBoardState(allNotesOld);
+
+        let oldState: BoardState;
+        if (this.cachedBoardState) {
+            oldState = this.cachedBoardState;
+        } else {
+            const allNotesOld = await searchNotes(this.openBoard.rootNotebookName, this.openBoard.baseTags);
+            oldState = this.openBoard.getBoardState(allNotesOld);
+        }
+
         const updates = this.openBoard.getBoardUpdate(msg, oldState);
         for (const query of updates) {
+            if (this.debug) {
+                console.log("updateBoardByAction", query);
+            }
             await executeUpdateQuery(query);
             this.openBoard.executeUpdateQuery(query);
         }
@@ -295,6 +313,10 @@ export class KanbanApp {
         this.joplinService.openNote(msg.payload.noteId);
     }
 
+    /** For message that would updates the kanban and notes.
+     * It should be queued to avoid concurrent updates.
+     */
+
     async handleQueuedKanbanMessage(msg: Action) {
         if (!this.openBoard) return this.handleNoOpenedBoard();
 
@@ -354,22 +376,7 @@ export class KanbanApp {
         }
 
         case "newNote": {
-            const allNotesOld = await searchNotes(this.openBoard.rootNotebookName, this.openBoard.baseTags);
-            const oldState: BoardState = this.openBoard.getBoardState(allNotesOld);
-            const newNoteId = await this.joplinService.createUntitledNote();
-            msg.payload.noteId = newNoteId;
-            const noteMonad = NoteDataMonad.fromNewNote(newNoteId);
-            for (const query of this.openBoard.getBoardUpdate(msg, oldState)) {
-                await executeUpdateQuery(query);
-                noteMonad.applyUpdateQuery(query);
-            }
-            // The note may be available but tags may not be available yet
-            // Let's cache it first.
-            const createdNote = noteMonad.data;
-            const timestamp = Date.now();
-            createdNote.order = timestamp;
-            createdNote.createdTime = timestamp;
-            this.openBoard.appendNoteCache(createdNote);
+            await this.handleNewNote(msg);
             break;
         }
 
@@ -395,7 +402,7 @@ export class KanbanApp {
             showReloadedToast = msg.payload?.showReloadedToast ?? false;
             break;
 
-            // Propagete action to the active board
+        // Propagete action to the active board
         default: {
             await this.updateBoardByAction(msg);
             if (msg.type === "insertNoteToColumn") {
@@ -407,6 +414,9 @@ export class KanbanApp {
         this.openBoard.removeNoteCache(searchedNotes.map((note) => note.id));
         const allNotesNew = this.openBoard.mergeCachedNotes(searchedNotes);
         const newState: BoardState = this.openBoard.getBoardState(allNotesNew);
+
+        this.cachedBoardState = newState;
+
         const currentYaml = getYamlConfig(
             (await getConfigNote(this.openBoard.configNoteId)).body,
         );
@@ -468,6 +478,7 @@ export class KanbanApp {
     handleCloseMessage(msg: Action) {
         if (msg.type === "close") {
             this.openBoard = undefined;
+            this.cachedBoardState = null;
             return this.hideBoard();
         }
     }
@@ -487,6 +498,57 @@ export class KanbanApp {
             ],
             columns: [],
         };
+    }
+
+    async handleNewNote(msg: NewNoteAction) {
+        if (!this.openBoard) return;
+        const allNotesOld = await searchNotes(this.openBoard.rootNotebookName, this.openBoard.baseTags);
+        const oldState: BoardState = this.openBoard.getBoardState(allNotesOld);
+        const newNoteId = await this.joplinService.createUntitledNote();
+        msg.payload.noteId = newNoteId;
+        const noteMonad = NoteDataMonad.fromNewNote(newNoteId);
+        for (const query of this.openBoard.getBoardUpdate(msg, oldState)) {
+            await executeUpdateQuery(query);
+            noteMonad.applyUpdateQuery(query);
+        }
+        // The note may be available but tags may not be available yet
+        // Let's cache it first.
+        const createdNote = noteMonad.data;
+        const timestamp = Date.now();
+        createdNote.order = timestamp;
+        createdNote.createdTime = timestamp;
+        this.openBoard.appendNoteCache(createdNote);
+    }
+
+    async handleNoteChange(id: string) {
+        if (!this.openBoard) return;
+        if (this.openBoard.configNoteId === id) {
+            if (!this.openBoard.isValid) await this.loadConfig(id);
+            this.refreshUI();
+            return;
+        }
+        const note = await getNoteById(id);
+        if (!note) return;
+
+        let shouldRefreshUI = false;
+        const cachedNote = this.findNoteData(id);
+        if (cachedNote) {
+            if (note.title !== cachedNote.title) {
+                cachedNote.title = note.title;
+                shouldRefreshUI = true;
+            }
+        }
+
+        const noteData = this.findNoteData(id);
+        if (noteData) {
+            if (note.title !== noteData.title) {
+                shouldRefreshUI = true;
+            }
+        }
+
+        if (shouldRefreshUI) {
+            this.refreshUI();
+        }
     }
 
     async prependRecentKanban(noteId: string, title: string) {
@@ -527,5 +589,12 @@ export class KanbanApp {
         if (this.boardView) {
             joplin.views.panels.postMessage(this.boardView, payload);
         }
+    }
+
+    findNoteData(noteId: string): NoteData | undefined {
+        // @Search cached Note
+        if (!this.cachedBoardState) return undefined;
+        const { note } = accessBoardState(this.cachedBoardState).findNoteData(noteId);
+        return note;
     }
 }

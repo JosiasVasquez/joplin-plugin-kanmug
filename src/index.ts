@@ -44,13 +44,7 @@ joplin.plugins.register({
         );
 
         joplin.workspace.onNoteChange(async ({ id }) => {
-            if (!kanbanApp.openBoard) return;
-            if (kanbanApp.openBoard.configNoteId === id) {
-                if (!kanbanApp.openBoard.isValid) await kanbanApp.loadConfig(id);
-                kanbanApp.refreshUI();
-            } else if (await kanbanApp.openBoard.isNoteIdOnBoard(id)) {
-                kanbanApp.refreshUI();
-            }
+            await kanbanApp.handleNoteChange(id);
         });
 
         const settings = {
