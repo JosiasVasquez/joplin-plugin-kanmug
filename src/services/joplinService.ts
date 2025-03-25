@@ -66,6 +66,14 @@ export class JoplinService {
         return noteData;
     }
 
+    async getNoteTitleById(noteId: string): Promise<string | undefined> {
+        const note = await joplin.data.get(["notes", noteId], { fields: ["title"] });
+        if (note == null) {
+            return undefined;
+        }
+        return note.title;
+    }
+
     openItem(item: string) {
         joplin.commands.execute("openItem", item);
     }

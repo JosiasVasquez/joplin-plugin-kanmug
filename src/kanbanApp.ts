@@ -527,21 +527,21 @@ export class KanbanApp {
             this.refreshUI();
             return;
         }
-        const note = await getNoteById(id);
-        if (!note) return;
+        const title = await this.joplinService.getNoteTitleById(id);
+        if (!title) return;
 
         let shouldRefreshUI = false;
         const cachedNote = this.findNoteData(id);
         if (cachedNote) {
-            if (note.title !== cachedNote.title) {
-                cachedNote.title = note.title;
+            if (title !== cachedNote.title) {
+                cachedNote.title = title;
                 shouldRefreshUI = true;
             }
         }
 
         const noteData = this.findNoteData(id);
         if (noteData) {
-            if (note.title !== noteData.title) {
+            if (title !== noteData.title) {
                 shouldRefreshUI = true;
             }
         }
