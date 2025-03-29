@@ -45,6 +45,9 @@ export default function ({ name, link, notes }: Props) {
     };
 
     const handleDrop = async (e: React.DragEvent) => {
+        if (e.dataTransfer.types.includes("text/x-kanmug-note-ids")) {
+            return;
+        }
         e.preventDefault();
         setIsNoteOver(false);
         // For canelling previous action
