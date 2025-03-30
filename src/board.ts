@@ -291,7 +291,7 @@ export default class Board {
    *
    * Return an empty list if can't handle the action type.
    */
-    getBoardUpdate(action: Action, boardState: BoardState) {
+    getBoardUpdate(action: Action, boardState: BoardState): UpdateQuery[] {
         switch (action.type) {
         case "newNote":
             return this.newNote(action as NewNoteAction);
@@ -360,7 +360,7 @@ export default class Board {
     }
 
     insertNoteToColumn(noteId: string, columnName: string, index: number, boardState: BoardState) {
-    // Insert note to column without knowing the original column
+        // Insert note to column without knowing the original column
         const monad = accessBoardState(boardState);
         const { note: existingNote, column: existingColumn } = monad.findNoteData(noteId);
         const queries: UpdateQuery[] = [];

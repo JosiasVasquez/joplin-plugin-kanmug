@@ -114,15 +114,19 @@ export class JoplinService {
 
     async toast(
         message: string,
-        type: "success" | "error" = "success",
+        type: "success" | "error" | "info" = "success",
         duration: number = 3000,
     ) {
-        await (joplin.views.dialogs as any).showToast(
-            {
-                message,
-                duration: duration + (this.toastCounter++ % 50),
-                type,
-            },
-        );
+        try {
+            await (joplin.views.dialogs as any).showToast(
+                {
+                    message,
+                    duration: duration + (this.toastCounter++ % 50),
+                    type,
+                },
+            );
+        } catch {
+            // Ignore
+        }
     }
 }

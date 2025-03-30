@@ -6,6 +6,7 @@ import {
 import Board from "./board";
 import {
     BoardState, Config, NoteData, NoteDataMonad, accessBoardState, BoardStateColumn,
+    Message,
 } from "./types";
 import { RecentKanbanStore } from "./recentKanbanStore";
 import { Debouncer } from "./utils/debouncer";
@@ -19,6 +20,7 @@ import { AsyncQueue } from "./utils/asyncQueue";
 import { ConfigUIData } from "./configui";
 import { getRuleEditorTypes } from "./rules";
 import { MarkdownFormatter } from "./markdown";
+import { DisableToPutParentIdToEmpty, PostProcessingRule, PostProcessingRuleState } from "./postprocessingrules";
 
 const REFRESH_UI_DEBOUNCE_MS = 100;
 
@@ -44,6 +46,12 @@ export class KanbanApp {
     debug: boolean = false;
 
     cachedBoardState: BoardState | null = null;
+
+    postProcessingRules: PostProcessingRule[] = [
+        new DisableToPutParentIdToEmpty(),
+    ];
+
+    pendingBannerMessages: Message[] = [];
 
     constructor(joplinService: JoplinService) {
         this.openBoard = undefined;
@@ -193,13 +201,33 @@ export class KanbanApp {
         }
 
         const updates = this.openBoard.getBoardUpdate(msg, oldState);
-        for (const query of updates) {
+        const postProcessingRuleState: PostProcessingRuleState = {
+            updates,
+            commands: [],
+        };
+        const newRuleState = this.postProcessingRules.reduce((state, rule) => rule.process(state), postProcessingRuleState);
+
+        for (const query of newRuleState.updates) {
             if (this.debug) {
                 console.log("updateBoardByAction", query);
             }
             await executeUpdateQuery(query);
             this.openBoard.executeUpdateQuery(query);
         }
+
+        const { pendingBannerMessages } = this;
+
+        for (const command of newRuleState.commands) {
+            if (this.debug) {
+                console.log("command", command);
+            }
+            if (command.type === "warning") {
+                this.joplinService.toast(command.message, "error", command.duration);
+            } else if (command.type === "showBanner") {
+                pendingBannerMessages.push(...command.messages);
+            }
+        }
+        this.pendingBannerMessages = pendingBannerMessages;
     }
 
     async postInsertNoteToColumn(msg: InsertNoteToColumnAction) {
@@ -370,8 +398,9 @@ export class KanbanApp {
             const { messageId, actionName } = msg.payload;
             if (messageId === "reload" && actionName === "reload") {
                 await this.loadConfig(this.openBoard.configNoteId);
+            } else if (messageId === "disable-to-put-parent-id-to-empty") {
+                this.pendingBannerMessages = [];
             }
-            // New message action add here
             break;
         }
 
@@ -432,6 +461,10 @@ export class KanbanApp {
                     actions: ["reload"],
                 },
             );
+        }
+
+        if (this.pendingBannerMessages.length > 0) {
+            newState.messages.push(...this.pendingBannerMessages);
         }
 
         if (msg.type !== "poll") {
