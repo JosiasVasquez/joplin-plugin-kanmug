@@ -16,16 +16,31 @@ export class DisableToPutParentIdToEmpty implements PostProcessingRule {
     process(state: PostProcessingRuleState): PostProcessingRuleState {
         const newState = { ...state };
 
-        const disableAllowedQuery = state.updates.find((update: any) => {
+        const updatedNoteLastParentId = {} as Record<string, string>;
+        let hasForbiddenUpdate = false;
+
+        state.updates.forEach((update: any) => {
             try {
-                return update.type === "put"
-                && update.body?.parent_id === "";
-            } catch (e) {
-                return false;
+                const { path } = update;
+                if (path[0] !== "notes") {
+                    return;
+                }
+                const noteId = path[1];
+                if (update.type === "put" && update.body?.parent_id != null) {
+                    updatedNoteLastParentId[noteId] = update.body.parent_id;
+                }
+            } catch {
             }
         });
 
-        if (disableAllowedQuery) {
+        for (const noteId in updatedNoteLastParentId) {
+            const parentId = updatedNoteLastParentId[noteId];
+            if (parentId === "") {
+                hasForbiddenUpdate = true;
+            }
+        }
+
+        if (hasForbiddenUpdate) {
             newState.updates = [];
             newState.commands.push({
                 type: "showBanner",
@@ -36,6 +51,15 @@ export class DisableToPutParentIdToEmpty implements PostProcessingRule {
                     actions: ["clear"],
                     details: "",
                 }],
+            });
+        } else {
+            newState.updates = state.updates.filter((update: any) => {
+                // Remove immediate updates that would move the note out of any folder
+                try {
+                    return !(update.type === "put" && update.body.parent_id === "");
+                } catch {
+                    return true;
+                }
             });
         }
         return newState;

@@ -201,6 +201,11 @@ export class KanbanApp {
         }
 
         const updates = this.openBoard.getBoardUpdate(msg, oldState);
+
+        if (this.debug) {
+            console.log("raw updates", updates);
+        }
+
         const postProcessingRuleState: PostProcessingRuleState = {
             updates,
             commands: [],

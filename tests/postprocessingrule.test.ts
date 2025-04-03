@@ -14,6 +14,7 @@ describe("PostProcessingRules", () => {
                 updates: [
                     {
                         type: "put",
+                        path: ["notes", "123"],
                         body: {
                             parent_id: "",
                             title: "Test note",
@@ -48,6 +49,7 @@ describe("PostProcessingRules", () => {
                 updates: [
                     {
                         type: "put",
+                        path: ["notes", "123"],
                         body: {
                             parent_id: "some-parent-id",
                             title: "Test note",
@@ -62,6 +64,46 @@ describe("PostProcessingRules", () => {
 
             // Assert
             expect(result.updates).toEqual(initialState.updates);
+            expect(result.commands).toEqual([]);
+        });
+
+        it("should allow updates with unset/set parent_id", () => {
+            // Arrange
+            const rule = new DisableToPutParentIdToEmpty();
+            const initialState: PostProcessingRuleState = {
+                updates: [
+                    {
+                        type: "put",
+                        path: ["notes", "123"],
+                        body: {
+                            parent_id: "",
+                            title: "Test note",
+                        },
+                    } as UpdateQuery,
+                    {
+                        type: "put",
+                        path: ["notes", "123"],
+                        body: {
+                            parent_id: "some-parent-id",
+                            title: "Test note",
+                        },
+                    } as UpdateQuery,
+                ],
+                commands: [],
+            };
+
+            const result = rule.process(initialState);
+
+            expect(result.updates).toEqual([
+                {
+                    type: "put",
+                    path: ["notes", "123"],
+                    body: {
+                        parent_id: "some-parent-id",
+                        title: "Test note",
+                    },
+                } as UpdateQuery,
+            ]);
             expect(result.commands).toEqual([]);
         });
     });
