@@ -18,6 +18,7 @@ const Container = styled("div")({
 
 const ColumnTitle = styled("div")({
     cursor: "pointer",
+    textDecoration: "underline",
     "&:hover": {
         opacity: 0.7,
     },

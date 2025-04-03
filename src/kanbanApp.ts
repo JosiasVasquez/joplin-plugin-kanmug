@@ -403,6 +403,7 @@ export class KanbanApp {
             const { messageId, actionName } = msg.payload;
             if (messageId === "reload" && actionName === "reload") {
                 await this.loadConfig(this.openBoard.configNoteId);
+                this.pendingBannerMessages = [];
             } else if (messageId === "disable-to-put-parent-id-to-empty") {
                 this.pendingBannerMessages = [];
             }
