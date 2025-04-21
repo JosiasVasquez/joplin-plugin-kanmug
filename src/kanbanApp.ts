@@ -97,6 +97,7 @@ export class KanbanApp {
         if (valid) {
             this.openBoard = board;
             this.cachedBoardState = null;
+            this.pendingBannerMessages = [];
             await this.prependRecentKanban(noteId, note.title);
             return true;
         }
