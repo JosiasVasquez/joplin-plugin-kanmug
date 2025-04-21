@@ -242,3 +242,10 @@ export class AbortedError extends Error {
         this.name = "AbortedError";
     }
 }
+
+export class TimeoutError extends Error {
+    constructor(message: string = "Task timed out") {
+        super(message);
+        this.name = "TimeoutError";
+    }
+}

@@ -1,4 +1,6 @@
-import { AbortedError } from "../types";
+import { AbortedError, TimeoutError } from "../types";
+
+const DEFAULT_TIMEOUT = 5000; // 5 seconds
 
 export class AsyncQueue {
     private queue: Array<{
@@ -10,6 +12,12 @@ export class AsyncQueue {
 
     private isProcessing: boolean = false;
 
+    private readonly timeout: number;
+
+    constructor(timeout: number = DEFAULT_TIMEOUT) {
+        this.timeout = timeout;
+    }
+
     private async processQueue() {
         if (this.isProcessing || this.queue.length === 0) return;
         this.isProcessing = true;
@@ -17,15 +25,20 @@ export class AsyncQueue {
             func, args, resolve, reject,
         } = this.queue[0];
 
+        const timeoutPromise = new Promise((_, timeoutReject) => {
+            setTimeout(() => {
+                timeoutReject(new TimeoutError());
+            }, this.timeout);
+        });
+
         try {
-            const result = await func(...args);
+            const result = await Promise.race([func(...args), timeoutPromise]);
             resolve(result);
         } catch (error) {
             reject(error);
         } finally {
             this.queue.shift();
             this.isProcessing = false;
-
             this.processQueue();
         }
     }

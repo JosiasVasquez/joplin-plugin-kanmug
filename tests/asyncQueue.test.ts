@@ -1,5 +1,5 @@
 import { AsyncQueue } from "../src/utils/asyncQueue";
-import { AbortedError } from "../src/types";
+import { AbortedError, TimeoutError } from "../src/types";
 
 describe("AsyncQueue", () => {
     jest.useFakeTimers();
@@ -35,13 +35,19 @@ describe("AsyncQueue", () => {
         jest.advanceTimersByTime(100);
         await Promise.resolve();
         expect(results).toEqual([1]);
-        await Promise.resolve();
+
+        while (func2.mock.calls.length === 0) {
+            await Promise.resolve();
+        }
 
         jest.advanceTimersByTime(50);
         await Promise.resolve();
         expect(results).toEqual([1, 2]);
 
-        await Promise.resolve();
+        while (func3.mock.calls.length === 0) {
+            await Promise.resolve();
+        }
+
         jest.advanceTimersByTime(25);
         await Promise.resolve();
         expect(results).toEqual([1, 2, 3]);
@@ -102,5 +108,83 @@ describe("AsyncQueue", () => {
         // Verify first function was called but second wasn't
         expect(func1).toHaveBeenCalledTimes(1);
         expect(func2).not.toHaveBeenCalled();
+    });
+
+    it("should timeout long-running tasks", async () => {
+        const timeout = 1000;
+        const queue = new AsyncQueue(timeout);
+        const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+        const longRunningTask = jest.fn().mockImplementation(async () => {
+            await delay(2000); // Longer than timeout
+            return "result";
+        });
+
+        const promise = queue.enqueue(longRunningTask);
+
+        // Advance time past the timeout
+        jest.advanceTimersByTime(timeout);
+        await Promise.resolve();
+
+        await expect(promise).rejects.toThrow(TimeoutError);
+        expect(longRunningTask).toHaveBeenCalledTimes(1);
+    });
+
+    it("should continue processing after timeout", async () => {
+        const timeout = 1000;
+        const queue = new AsyncQueue(timeout);
+        const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+        const results: string[] = [];
+
+        const longRunningTask = jest.fn().mockImplementation(async () => {
+            await delay(2000);
+            results.push("timeout");
+            return "timeout";
+        });
+
+        const normalTask = jest.fn().mockImplementation(async () => {
+            await delay(500);
+            results.push("normal");
+            return "normal";
+        });
+
+        const promise1 = queue.enqueue(longRunningTask);
+        const promise2 = queue.enqueue(normalTask);
+
+        jest.advanceTimersByTime(timeout);
+        await Promise.resolve();
+
+        await expect(promise1).rejects.toThrow(TimeoutError);
+
+        jest.advanceTimersByTime(500);
+        await Promise.resolve();
+
+        await expect(promise2).resolves.toBe("normal");
+
+        expect(results).toEqual(["normal"]);
+
+        jest.advanceTimersByTime(1000);
+        await Promise.resolve();
+
+        expect(results).toEqual(["normal", "timeout"]);
+    });
+
+    it("should use custom timeout value", async () => {
+        const customTimeout = 2000;
+        const queue = new AsyncQueue(customTimeout);
+        const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+        const task = jest.fn().mockImplementation(async () => {
+            await delay(2500); // Longer than custom timeout
+            return "result";
+        });
+
+        const promise = queue.enqueue(task);
+
+        // Advance time past the custom timeout
+        jest.advanceTimersByTime(customTimeout);
+        await Promise.resolve();
+
+        await expect(promise).rejects.toThrow(TimeoutError);
     });
 });

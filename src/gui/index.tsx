@@ -6,6 +6,7 @@ import {
 } from "react-icons/io";
 import { MdOutlineViewKanban } from "react-icons/md";
 
+import { WebviewMessage } from "src/messages";
 import { capitalize } from "../utils";
 import { DispatchFn, useRemoteBoard } from "./hooks";
 import { DragDropContext } from "./DragDrop";
@@ -101,7 +102,7 @@ function Content(props: { board?: BoardState }) {
     });
 
     React.useEffect(() => {
-        webviewApi.onMessage((payload) => {
+        webviewApi.onMessage((payload: {message: WebviewMessage}) => {
             try {
                 const { message } = payload;
                 if (message.type === "refresh") {
@@ -109,6 +110,8 @@ function Content(props: { board?: BoardState }) {
                 } else if (message.type === "showRecentKanban") {
                     setKanbans(message.payload.recentKanbans);
                     recentKanbanHandle.open();
+                } else if (message.type === "log") {
+                    console.info(message.payload.log);
                 }
             } catch (e) {
                 console.error("Error handling message", e);

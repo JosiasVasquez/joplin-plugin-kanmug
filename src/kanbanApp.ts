@@ -7,6 +7,7 @@ import Board from "./board";
 import {
     BoardState, Config, NoteData, NoteDataMonad, accessBoardState, BoardStateColumn,
     Message,
+    TimeoutError,
 } from "./types";
 import { RecentKanbanStore } from "./recentKanbanStore";
 import { Debouncer } from "./utils/debouncer";
@@ -324,10 +325,18 @@ export class KanbanApp {
             break;
         }
         }
+
         return this.kanbanMessageQueue.enqueue(async () => this.handleQueuedKanbanMessage(msg)).catch(
             (e) => {
                 if (e instanceof Error && e.name === "AbortedError") {
                     // Ignore aborted errors
+                } else if (e instanceof Error && e.name === "TimeoutError") {
+                    this.postMessageToPanel({
+                        type: "log",
+                        payload: {
+                            log: `Task timed out: ${JSON.stringify(msg)}`,
+                        },
+                    });
                 } else {
                     console.error("Error handling queued kanban message", e);
                 }
