@@ -11,7 +11,7 @@ export type PostProcessingRule = {
 }
 
 export class DisableToPutParentIdToEmpty implements PostProcessingRule {
-    static readonly ERROR_MESSAGE = "Can't move note out of any folder. Check kanban rules.";
+    static readonly ERROR_MESSAGE = "Can't move note out of any folder. Please review your kanban rules.";
 
     process(state: PostProcessingRuleState): PostProcessingRuleState {
         const newState = { ...state };

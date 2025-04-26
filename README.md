@@ -102,6 +102,88 @@ Descending sort order may be specified by prefixing `-`, e.g., `-title`.
 
 The configured sort order will apply to all columns.
 
+### Managing Large Kanban Boards with Column Title Linking
+
+A Kanban board may unintentionally grow into an overly large and complex structure, making it difficult to manage and navigate. For example, you might initially create a "Reference" column to store various resources, but later realize that further categorization is necessary to organize these materials effectively.
+
+An oversized board is not ideal for management. To address this issue, you may fork a **Sub-Kanban** boards and create link to the original kanban.
+
+The process is straightforward. When a column—such as "Resources"—needs further breakdown (e.g., into "Articles," "Diagrams," or "Design"), you can create a new Kanban board to accommodate the subcategories. In the original board, a column tile link can then be used to connect to the Sub-Kanban board.
+
+**Example Structure:**
+
+Original Kanban:
+```
+My Project
+├─WIP
+├─TODO
+├─Backlog
+├─Design
+├─Diagram
+└─Article
+```
+
+After introducing a Sub-Kanban:
+
+```
+My Project
+├─Backlog
+├─TODO
+├─WIP
+└─Resources # Click on the column title to open `My Project Resources` kanban
+
+My Project Resources
+├─Backlog # Click on the column title to open `My Project` kanban
+├─Design
+├─Diagram
+└─Article
+```
+
+**Example Kanban Configurations:**
+
+Main Board (`My Project`):
+
+```yaml
+```kanban
+filters:
+  rootNotebookPath: /
+  tag: my_project
+columns:
+  - name: Backlog
+    backlog: true
+  - name: WIP
+    tag: my_project/wip
+  - name: TODO
+    tag: my_project/todo
+  - name: Resources
+    tag: my_project/resources
+    link: joplin://x-callback-url/openNote?id=740b762b425e4abb91f01aff11fc34b0
+```
+
+Sub-Board (`My Project Resources`):
+
+```yaml
+```kanban
+filters:
+  rootNotebookPath: /
+  tag: my_project/resources
+columns:
+  - name: 🔙 Backlog
+    backlog: true
+    link: joplin://x-callback-url/openNote?id=b228ae0f49439473640712e7aaa5012c
+  - name: Design
+    tag: my_project/design
+  - name: Diagram
+    tag: my_project/diagram
+  - name: Articles
+    tag: my_project/article
+```
+
+**Notes:**
+
+- The `link` field supports both external Joplin links (`joplin://`) and standard web URLs.
+
+
 ### New Note Title
 
 You can use the `newNoteTitle` property to specify a template for the title of new notes. The template will be rendered using [EJS](https://ejs.co/) and will have access to the `today()` function, which will render the current date and time.
@@ -140,6 +222,36 @@ Let's say you have a kanban with a column for "Due Tomorrow". You want to create
 newNoteTitle: New Task <%= today().add('1d').add('-4h') %>
 ```
 Add `-4h' if you think that a start time of a day is 04:00
+
+## Troubleshooting
+
+### Cannot Move Note Out of Any Folder. Please Review Your Kanban Configuration.
+
+When configuring your Kanban board, if you specify a `notebookPath` for the Kanban settings but omit the `notebookPath` for one or more columns, the following issue can occur:
+
+**Example**
+
+```yaml
+```kanban
+filters:
+  rootNotebookPath: /
+  tag: column
+columns:
+  - name: Backlog
+    backlog: true
+  - name: Column1
+    notebookPath: /column1
+  - name: Column2
+    tag: column2
+```
+
+In this configuration, moving a card from **Column1** to **Column2** would cause the associated note to be moved out of the `/column1` folder and placed directly under the root folder (`/`). 
+
+This operation is problematic because many extensions—and even Joplin itself—may not handle such behavior correctly, leading to potential glitches. To prevent these issues, this type of operation is now explicitly forbidden. 
+
+Please review and update your Kanban board configuration to ensure that all columns are properly set up to avoid triggering this restriction.
+
+If you prefer a different behavior or have suggestions for improvement, feel free to open an issue on our [issue tracker](https://github.com/benlau/joplin-plugin-kanmug/issues) or participate in the discussion at the [Joplin Forum](https://discourse.joplinapp.org/t/kanmug-a-forked-project-of-the-original-kanban-plugin/43481).
 
 ## Further information
 
