@@ -20,6 +20,8 @@ interface Column {
   newNoteTitle?: string;
 }
 
+const ORDER_STEP = 1000;
+
 /**
  * Class representing a kanban board instance.
  * Keeps track of the active configuration and rules.
@@ -286,63 +288,71 @@ export default class Board {
     }
 
     /**
-   * Based on an action, get a list of update queries needed to update the note database
-   * so that the board reached the desired state.
-   *
-   * Return an empty list if can't handle the action type.
-   */
+     * Based on an action, get a list of update queries needed to update the note database
+     * so that the board reached the desired state.
+     *
+     * Return an empty list if can't handle the action type.
+     */
     getBoardUpdate(action: Action, boardState: BoardState): UpdateQuery[] {
         switch (action.type) {
         case "newNote":
             return this.newNote(action as NewNoteAction);
         case "moveNote":
-            const {
-                noteId, newColumnName, oldColumnName, newIndex,
-            } = action.payload;
-            const newCol = this.allColumns.find(
-                ({ name }) => name === newColumnName,
-            ) as Column;
-            const oldCol = this.allColumns.find(
-                ({ name }) => name === oldColumnName,
-            ) as Column;
-
-            const unsetQueries = oldCol.rules.flatMap((r) => r.unset(noteId));
-            const setQueries = newCol.rules.flatMap((r) => r.set(noteId));
-            const queries: UpdateQuery[] = [...unsetQueries, ...setQueries];
-
-            const setOrder = (note: string, order: number) => queries.push({
-                type: "put",
-                path: ["notes", note],
-                body: { order },
-            });
-            const notesInCol = boardState.columns?.find(
-                (col) => col.name === newColumnName,
-            )?.notes as NoteData[];
-            const notes = notesInCol.filter((note) => note.id !== noteId);
-            if (notes.length > 0) {
-                if (newIndex === 0) {
-                    setOrder(noteId, notes[0].order + 1);
-                } else if (newIndex >= notes.length) {
-                    setOrder(noteId, notes[notes.length - 1].order - 1);
-                } else {
-                    const newOrder = notes[newIndex - 1].order - 1;
-                    setOrder(noteId, newOrder);
-                    const notesAfter = notesInCol.slice(newIndex);
-                    notesAfter.forEach(
-                        (note, idx) => note.id !== noteId && setOrder(note.id, newOrder - 1 - idx),
-                    );
-                }
-            }
-
-            return queries;
-
+            return this.moveNote(action.payload.noteId, action.payload.newColumnName, action.payload.oldColumnName, action.payload.newIndex, boardState);
         case "insertNoteToColumn":
             return this.insertNoteToColumn(action.payload.noteId, action.payload.columnName, action.payload.index, boardState);
         case "removeNoteFromKanban":
             return this.removeNoteFromKanban(action.payload.noteId, boardState);
         }
-
         return [];
+    }
+
+    moveNote(noteId: string, newColumnName: string, oldColumnName: string, newIndex: number, boardState: BoardState) {
+        const newCol = this.allColumns.find(
+            ({ name }) => name === newColumnName,
+        ) as Column;
+        const oldCol = this.allColumns.find(
+            ({ name }) => name === oldColumnName,
+        ) as Column;
+
+        const unsetQueries = oldCol.rules.flatMap((r) => r.unset(noteId));
+        const setQueries = newCol.rules.flatMap((r) => r.set(noteId));
+        const queries: UpdateQuery[] = [...unsetQueries, ...setQueries];
+
+        const setOrder = (note: string, order: number) => queries.push({
+            type: "put",
+            path: ["notes", note],
+            body: { order },
+        });
+        const notesInCol = boardState.columns?.find(
+            (col) => col.name === newColumnName,
+        )?.notes as NoteData[];
+        const notes = notesInCol.filter((note) => note.id !== noteId);
+        if (notes.length > 0) {
+            if (newIndex === 0) {
+                setOrder(noteId, Date.now());
+            } else if (newIndex >= notes.length) {
+                setOrder(noteId, notes[notes.length - 1].order - ORDER_STEP);
+            } else {
+                const prevItem = notes[newIndex - 1];
+                const nextItem = notes[newIndex];
+                const newOrder = Math.floor((prevItem.order + nextItem.order) / 2);
+                setOrder(noteId, newOrder);
+                const notesAfter = notesInCol.slice(newIndex);
+                let prevOrder = newOrder;
+                for (const note of notesAfter) {
+                    if (note.order >= prevOrder) {
+                        const newValue = prevOrder - ORDER_STEP;
+                        setOrder(note.id, newValue);
+                        prevOrder = newValue;
+                    } else {
+                        break;
+                    }
+                }
+            }
+        }
+
+        return queries;
     }
 
     removeNoteFromKanban(noteId: string, boardState: BoardState) {

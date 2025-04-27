@@ -594,7 +594,7 @@ describe("Board", () => {
                     expect(update).toContainEqual({
                         type: "put",
                         path: ["notes", noteId],
-                        body: { order: 1 },
+                        body: { order: mockTime },
                     });
                 });
 
@@ -624,7 +624,7 @@ describe("Board", () => {
                     expect(update).toContainEqual({
                         type: "put",
                         path: ["notes", noteId],
-                        body: { order: -1 },
+                        body: { order: -1000 },
                     });
                 });
 
@@ -663,13 +663,57 @@ describe("Board", () => {
                     expect(update).toContainEqual({
                         type: "put",
                         path: ["notes", "22"],
-                        body: { order: 0 },
+                        body: { order: -999 },
                     });
                     expect(update).toContainEqual({
                         type: "put",
                         path: ["notes", "23"],
-                        body: { order: -1 },
+                        body: { order: -1999 },
                     });
+                });
+
+                it("can put card at any index but update of cards should be minimal", async () => {
+                    const board = (await createBoard({
+                        id: "testid",
+                        title: "testname",
+                        body: testConfigBody,
+                        parent_id: parentNb,
+                    })) as Board;
+                    const bs = state(undefined, [
+                        note({ id: "21", order: 300 }),
+                        note({ id: "22", order: 200 }),
+                        note({ id: "23", order: 100 }),
+                        note({ id: "24", order: 50 }),
+                    ]);
+
+                    const noteId = "1";
+                    const update = board.getBoardUpdate(
+                        {
+                            type: "moveNote",
+                            payload: {
+                                noteId,
+                                oldColumnName: "Backlog",
+                                newColumnName: "Ready for review",
+                                newIndex: 1,
+                            },
+                        },
+                        bs,
+                    );
+
+                    expect(update).toContainEqual({
+                        type: "post",
+                        path: ["tags", "ready", "notes"],
+                        body: { id: noteId },
+                        info: {
+                            tags: ["ready"],
+                        },
+                    });
+                    expect(update).toContainEqual({
+                        type: "put",
+                        path: ["notes", noteId],
+                        body: { order: 250 },
+                    });
+                    expect(update.length).toBe(2);
                 });
             });
         });

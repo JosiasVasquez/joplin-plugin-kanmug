@@ -1,4 +1,4 @@
-// @ts-expect-error
+// @ts-expect-error ejs is not typed
 import ejs from "ejs/ejs.min.js";
 import { DateTime as LuxonDateTime } from "luxon";
 import ms from "ms";
