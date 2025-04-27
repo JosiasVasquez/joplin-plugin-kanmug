@@ -16,6 +16,10 @@ export function useRemoteBoard(): [BoardState | undefined, DispatchFn, DispatchF
 
     const dispatch: DispatchFn = useCallback(async (action: Action) => {
         const newBoard: BoardState = await webviewApi.postMessage(action);
+        if (newBoard == null) {
+            console.error("dispatch: newBoard is null");
+            return;
+        }
         setState({ board: newBoard });
     }, []);
 
