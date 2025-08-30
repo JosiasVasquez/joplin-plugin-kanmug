@@ -9,9 +9,13 @@ interface DraggableCardProps {
   note: NoteData;
   colName: string;
   index: number;
+  isAtTop: boolean;
+  isAtBottom: boolean;
 }
 
-export default function ({ note, colName, index }: DraggableCardProps) {
+export default function ({
+    note, colName, index, isAtTop, isAtBottom,
+}: DraggableCardProps) {
     const ref = useRef<HTMLDivElement>(null);
     const cardRef = useRef<HTMLDivElement>(null);
     const { handlerId, withPlaceholder } = useDroppableCard({
@@ -39,7 +43,7 @@ export default function ({ note, colName, index }: DraggableCardProps) {
             onDragStart={onDragStart}
         >
             {withPlaceholder(
-                <ClickableCard ref={cardRef} note={note} />,
+                <ClickableCard ref={cardRef} note={note} colName={colName} isAtTop={isAtTop} isAtBottom={isAtBottom} />,
             )}
         </div>
     );

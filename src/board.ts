@@ -301,6 +301,10 @@ export default class Board {
             return this.moveNote(action.payload.noteId, action.payload.newColumnName, action.payload.oldColumnName, action.payload.newIndex, boardState);
         case "insertNoteToColumn":
             return this.insertNoteToColumn(action.payload.noteId, action.payload.columnName, action.payload.index, boardState);
+        case "moveNoteToTop":
+            return this.moveNoteToTop(action.payload.noteId, action.payload.columnName, boardState);
+        case "moveNoteToBottom":
+            return this.moveNoteToBottom(action.payload.noteId, action.payload.columnName, boardState);
         case "removeNoteFromKanban":
             return this.removeNoteFromKanban(action.payload.noteId, boardState);
         }
@@ -398,6 +402,56 @@ export default class Board {
             type: "put",
             path: ["notes", noteId],
             body: { order: timestamp },
+        });
+
+        return queries;
+    }
+
+    moveNoteToTop(noteId: string, columnName: string, boardState: BoardState) {
+        const monad = accessBoardState(boardState);
+        const { note: existingNote, column: existingColumn } = monad.findNoteData(noteId);
+        const queries: UpdateQuery[] = [];
+
+        if (!existingNote || !existingColumn || existingColumn.name !== columnName) {
+            return queries;
+        }
+
+        // Set the note order to the highest priority (current timestamp)
+        const newOrder = Date.now();
+        queries.push({
+            type: "put",
+            path: ["notes", noteId],
+            body: { order: newOrder },
+        });
+
+        return queries;
+    }
+
+    moveNoteToBottom(noteId: string, columnName: string, boardState: BoardState) {
+        const monad = accessBoardState(boardState);
+        const { note: existingNote, column: existingColumn } = monad.findNoteData(noteId);
+        const queries: UpdateQuery[] = [];
+
+        if (!existingNote || !existingColumn || existingColumn.name !== columnName) {
+            return queries;
+        }
+
+        const notesInCol = boardState.columns?.find(
+            (col) => col.name === columnName,
+        )?.notes as NoteData[];
+
+        if (notesInCol.length <= 1) {
+            return queries;
+        }
+
+        // Find the lowest order value and set the note order below it
+        const lowestOrder = Math.min(...notesInCol.map((note) => note.order));
+        const newOrder = lowestOrder - ORDER_STEP;
+
+        queries.push({
+            type: "put",
+            path: ["notes", noteId],
+            body: { order: newOrder },
         });
 
         return queries;

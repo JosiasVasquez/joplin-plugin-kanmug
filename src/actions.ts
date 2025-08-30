@@ -116,6 +116,22 @@ export interface ColumnTitleClickedAction {
   };
 }
 
+export interface MoveNoteToTopAction {
+  type: "moveNoteToTop";
+  payload: {
+    noteId: string;
+    columnName: string;
+  };
+}
+
+export interface MoveNoteToBottomAction {
+  type: "moveNoteToBottom";
+  payload: {
+    noteId: string;
+    columnName: string;
+  };
+}
+
 export type Action =
   | MoveNoteAction
   | LoadAction
@@ -134,4 +150,6 @@ export type Action =
   | RequestToShowRecentKanbanAction
   | OpenKanbanAction
   | RequestToRemoveRecentKanbanItemAction
-  | ColumnTitleClickedAction;
+  | ColumnTitleClickedAction
+  | MoveNoteToTopAction
+  | MoveNoteToBottomAction;

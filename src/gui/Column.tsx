@@ -103,7 +103,14 @@ export default function ({ name, link, notes }: Props) {
                     isVisible={!isNoteDragOver}
                 >
                     {notes.map((note, idx) => (
-                        <DraggableCard key={note.id} colName={name} note={note} index={idx}/>
+                        <DraggableCard
+                            key={note.id}
+                            colName={name}
+                            note={note}
+                            index={idx}
+                            isAtTop={idx === 0}
+                            isAtBottom={idx === notes.length - 1}
+                        />
                     ))}
                 </DroppableArea>
             </DroppableAreaContainer>

@@ -191,6 +191,11 @@ export class KanbanApp {
         }
     }
 
+    /**
+     * Updates the kanban board state by processing an action and applying the resulting changes.
+     *
+     * @param msg - The action to process (e.g., moveNote, removeNoteFromKanban, etc.)
+     */
     async updateBoardByAction(msg: Action) {
         if (!this.openBoard) return;
 
@@ -434,6 +439,12 @@ export class KanbanApp {
 
             this.openBoard.removeNoteCache([msg.payload.noteId]);
 
+            await this.updateBoardByAction(msg);
+            break;
+        }
+
+        case "moveNoteToTop":
+        case "moveNoteToBottom": {
             await this.updateBoardByAction(msg);
             break;
         }
