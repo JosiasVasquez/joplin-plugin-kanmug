@@ -1,4 +1,6 @@
 dist/
+Data/
+examples/
 node_modules/
 publish/
 api/

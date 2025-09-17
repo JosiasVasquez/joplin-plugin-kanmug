@@ -14,6 +14,7 @@ import Column from "./Column";
 import type { Board, BoardState, Message } from "../types";
 import { MainContext, useMainContext } from "./MainContext";
 import { RecentKanbansPanel, useRecentKanbansPanelHandle } from "./RecentKanbansPanel";
+import { AnnouncerContext } from "./useAnnouncer";
 
 export const DispatchContext = React.createContext<DispatchFn>(async () => {});
 export const IsWaitingContext = React.createContext<boolean>(false);
@@ -241,15 +242,43 @@ function App() {
         board,
     }), [dispatch, send, board]);
 
+    const announcerRef = React.useRef<HTMLDivElement>(null);
+    const announce = React.useCallback((message: string) => {
+        if (announcerRef.current) {
+            announcerRef.current.textContent = "";
+            announcerRef.current.textContent = message;
+        }
+    }, []);
+
+    const announcerContextValue = React.useMemo(() => ({ announce }), [announce]);
+
     // @TODO: Remove DispatchContext.Provider
     return (
-        <MainContext.Provider value={mainContextValue}>
-            <DispatchContext.Provider value={dispatch}>
-                <DragDropContext>
-                    <Content board={board} />
-                </DragDropContext>
-            </DispatchContext.Provider>
-        </MainContext.Provider>
+        <AnnouncerContext.Provider value={announcerContextValue}>
+            <MainContext.Provider value={mainContextValue}>
+                <DispatchContext.Provider value={dispatch}>
+                    <DragDropContext>
+                        <Content board={board} />
+                    </DragDropContext>
+                </DispatchContext.Provider>
+            </MainContext.Provider>
+            <div
+                ref={announcerRef}
+                style={{
+                    position: "absolute",
+                    width: "1px",
+                    height: "1px",
+                    padding: "0",
+                    margin: "-1px",
+                    overflow: "hidden",
+                    clip: "rect(0, 0, 0, 0)",
+                    whiteSpace: "nowrap",
+                    border: "0",
+                }}
+                aria-live="assertive"
+                aria-atomic="true"
+            />
+        </AnnouncerContext.Provider>
     );
 }
 
