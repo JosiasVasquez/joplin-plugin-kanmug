@@ -10,6 +10,7 @@ const MenuItem = {
     OpenNoteInNewWindow: "Open in New Window",
     MoveToTop: "Move to top",
     MoveToBottom: "Move to bottom",
+    MoveToColumn: "Move to column...",
 };
 
 interface ClickableCardProps {
@@ -19,11 +20,10 @@ interface ClickableCardProps {
     isAtBottom: boolean;
 }
 
-export default React.forwardRef<HTMLDivElement, ClickableCardProps>(
-    ({
-        note, colName, isAtTop, isAtBottom,
-    }, ref) => {
-        const { send, dispatch } = useMainContext();
+export default React.forwardRef<HTMLButtonElement, ClickableCardProps>(
+    ({ note, colName, isAtTop, isAtBottom }, ref) => {
+        const { send, dispatch, board } = useMainContext();
+        const [isMoveMenuOpen, setMoveMenuOpen] = React.useState(false);
 
         const handleClick = () => {
             send({
@@ -33,7 +33,11 @@ export default React.forwardRef<HTMLDivElement, ClickableCardProps>(
         };
 
         const contextMenuOptions = React.useMemo(() => {
-            const baseOptions = [MenuItem.OpenNoteInNewWindow, MenuItem.RemoveFromKanban];
+            const baseOptions = [
+                MenuItem.MoveToColumn,
+                MenuItem.OpenNoteInNewWindow,
+                MenuItem.RemoveFromKanban,
+            ];
 
             if (isAtTop && isAtBottom) {
                 return baseOptions;
@@ -66,15 +70,36 @@ export default React.forwardRef<HTMLDivElement, ClickableCardProps>(
                     type: "moveNoteToBottom",
                     payload: { noteId: note.id, columnName: colName },
                 });
+            } else if (option === MenuItem.MoveToColumn) {
+                setMoveMenuOpen(true);
             }
         }, [note.id, colName, dispatch, send]);
 
+        const handleMoveToColumn = (targetColumn: string) => {
+            dispatch({
+                type: "moveNoteToColumn",
+                payload: { noteId: note.id, from: colName, to: targetColumn },
+            });
+            setMoveMenuOpen(false);
+        };
+
+        const availableColumns = board?.columns?.map((c: any) => c.name).filter((c: any) => c !== colName) || [];
+
         return (
-            <div ref={ref} onClick={handleClick}>
+            <button ref={ref} onClick={handleClick}>
                 <ContextMenu options={contextMenuOptions} onSelect={handleMenu}>
-                    <Card note={note}/>
+                    <Card note={note} />
                 </ContextMenu>
-            </div>
+                {isMoveMenuOpen && (
+                    <ContextMenu
+                        options={availableColumns}
+                        onSelect={handleMoveToColumn}
+                    >
+                        {/* This is a dummy element for the context menu to attach to */}
+                        <div />
+                    </ContextMenu>
+                )}
+            </button>
         );
     },
 );

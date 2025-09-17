@@ -1,5 +1,8 @@
+Data/
 dist/
+examples/
 node_modules/
 publish/
+pr.md
 pnpm-lock.yaml
 .DS_Store

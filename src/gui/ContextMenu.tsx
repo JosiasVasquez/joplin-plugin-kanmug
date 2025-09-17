@@ -5,7 +5,6 @@ import styled from "styled-components";
 import { createPortal } from "react-dom";
 import { Backdrop } from "./Backdrop";
 
-const CLOSE_EVENTS = ["click", "contextmenu", "wheel"];
 const MENU_WIDTH = 150;
 
 export default function ({
@@ -17,26 +16,93 @@ export default function ({
   onSelect: (selected: string) => void;
   children: React.ReactElement;
 }) {
-    const [{ posX, posY }, setPos] = useState<{
+    const [state, setState] = useState<{
     posX: number | null;
     posY: number | null;
+    triggerRef?: React.RefObject<HTMLElement>;
   }>({ posX: null, posY: null });
-    const isOpen = posX !== null && posY !== null;
 
-    const handleMenu = (ev: React.MouseEvent) => {
+    const { posX, posY, triggerRef } = state;
+    const isOpen = posX !== null && posY !== null;
+    const menuItemsRef = useRef<(HTMLButtonElement | null)[]>([]);
+
+    useEffect(() => {
+        if (isOpen) {
+            menuItemsRef.current[0]?.focus();
+        } else {
+            triggerRef?.current?.focus();
+        }
+    }, [isOpen, triggerRef]);
+
+    const handleContextMenu = (ev: React.MouseEvent) => {
         ev.preventDefault();
-        setPos({ posX: ev.clientX, posY: ev.clientY });
+        setState({
+            posX: ev.clientX,
+            posY: ev.clientY,
+            triggerRef: { current: ev.currentTarget as HTMLElement },
+        });
+    };
+
+    const handleTriggerKeyDown = (ev: React.KeyboardEvent) => {
+        if (ev.key === "Enter" || ev.key === " ") {
+            ev.preventDefault();
+            const rect = ev.currentTarget.getBoundingClientRect();
+            setState({
+                posX: rect.left,
+                posY: rect.bottom,
+                triggerRef: { current: ev.currentTarget as HTMLElement },
+            });
+        }
+    };
+
+    const closeMenu = useCallback(() => {
+        setState((s) => ({ ...s, posX: null, posY: null }));
+    }, []);
+
+    const handleMenuKeyDown = (ev: React.KeyboardEvent) => {
+        if (!isOpen) return;
+
+        const { key } = ev;
+        if (key === "Escape") {
+            closeMenu();
+            return;
+        }
+
+        if (key === "ArrowDown" || key === "ArrowUp") {
+            ev.preventDefault();
+            const currentIdx = menuItemsRef.current.indexOf(
+                document.activeElement as HTMLButtonElement,
+            );
+            const dir = key === "ArrowDown" ? 1 : -1;
+            const nextIdx = (currentIdx + dir + options.length) % options.length;
+            menuItemsRef.current[nextIdx]?.focus();
+        }
     };
 
     return (
         <>
-            <div onContextMenu={handleMenu}>{children}</div>
+            <div onContextMenu={handleContextMenu} onKeyDown={handleTriggerKeyDown}>{children}</div>
             {isOpen
         && createPortal(
-            <Backdrop isOpened={isOpen} onClose={() => setPos({ posX: null, posY: null })}>
-                <FloatingMenu posX={posX} posY={posY}>
+            <Backdrop isOpened={isOpen} onClose={closeMenu}>
+                <FloatingMenu
+                    role="menu"
+                    onKeyDown={handleMenuKeyDown}
+                    posX={posX}
+                    posY={posY}
+                >
                     {options.map((opt, idx) => (
-                        <MenuItem key={idx} onClick={() => onSelect(opt)}>
+                        <MenuItem
+                            key={idx}
+                            role="menuitem"
+                            ref={(el) => {
+                                menuItemsRef.current[idx] = el;
+                            }}
+                            onClick={() => {
+                                onSelect(opt);
+                                closeMenu();
+                            }}
+                        >
                             {opt}
                         </MenuItem>
                     ))}
@@ -61,10 +127,17 @@ const FloatingMenu = styled.div<{ posX: number | null; posY: number | null }>(
     }),
 );
 
-const MenuItem = styled.div({
+const MenuItem = styled.button({
+    display: "block",
+    width: "100%",
+    border: "none",
+    backgroundColor: "transparent",
+    textAlign: "left",
     padding: "7px 14px",
     userSelect: "none",
-    "&:hover": {
+    color: "var(--joplin-color)",
+    "&:hover, &:focus": {
         backgroundColor: "var(--joplin-background-color-hover3)",
+        outline: "none",
     },
 });

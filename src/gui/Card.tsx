@@ -37,7 +37,7 @@ export default React.forwardRef<HTMLDivElement, { note: NoteData }>(
 
         return (
             <CardDiv ref={ref}>
-                {title}
+                <h3>{title}</h3>
                 <ExtrasContainer>
                     {extras.map((e, idx) => renderExtra(idx, ...e))}
                 </ExtrasContainer>

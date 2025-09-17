@@ -153,6 +153,8 @@ function Content(props: { board?: BoardState }) {
         <Container>
             <Header>
                 <IconCont
+                    role="button"
+                    aria-label="Close Kanban"
                     onClick={closeKanban}
                 >
                     <IoMdClose size="20px"/>
@@ -160,18 +162,22 @@ function Content(props: { board?: BoardState }) {
                 <BoardTitle
                     onClick={() => send({ type: "openKanbanConfigNote" })}
                 >
-                    {board.name}
+                    <h1>{board.name}</h1>
                 </BoardTitle>
 
-                <IconCont onClick={handleShowRecentKanban}>
+                <IconCont role="button" aria-label="Show recent Kanbans" onClick={handleShowRecentKanban}>
                     <MdOutlineViewKanban size="25px" />
                 </IconCont>
                 <IconCont
+                    role="button"
+                    aria-label="Refresh Kanban"
                     onClick={handleRefresh}
                 >
                     <IoMdRefresh size="25px" />
                 </IconCont>
                 <IconCont
+                    role="button"
+                    aria-label="Settings"
                     onClick={() => dispatch({ type: "settings", payload: { target: "filters" } })
                     }
                 >
@@ -179,6 +185,8 @@ function Content(props: { board?: BoardState }) {
                 </IconCont>
 
                 <IconCont
+                    role="button"
+                    aria-label="Add new column"
                     onClick={() => dispatch({ type: "settings", payload: { target: "columnnew" } })
                     }
                 >
@@ -230,7 +238,8 @@ function App() {
     const mainContextValue = React.useMemo(() => ({
         dispatch,
         send,
-    }), [dispatch, send]);
+        board,
+    }), [dispatch, send, board]);
 
     // @TODO: Remove DispatchContext.Provider
     return (
