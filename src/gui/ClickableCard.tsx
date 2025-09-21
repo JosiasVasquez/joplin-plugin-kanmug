@@ -141,9 +141,6 @@ export default React.forwardRef<HTMLDivElement, ClickableCardProps>(
                 <MainActionWrapper
                     onClick={handleCardClick}
                     onKeyDown={handleCardKeyDown}
-                    tabIndex={0}
-                    role="button"
-                    aria-label={`${note.title}: press to Open`}
                 >
                     <Card note={note} />
                 </MainActionWrapper>
